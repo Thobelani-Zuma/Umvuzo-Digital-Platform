@@ -128,9 +128,7 @@ export function LoginPage({ onLogin, onRegister }: LoginPageProps) {
             </button>
           </p>
         </div>
-        <p className="mt-4 text-xs text-center text-gray-400">
-            Hint: Log in as <strong>media@isphepho.co.za</strong> to view the admin dashboard.
-        </p>
+        
       </div>
     </div>
   );
