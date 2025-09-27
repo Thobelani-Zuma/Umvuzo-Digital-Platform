@@ -5,18 +5,10 @@ import { PlusIcon, TrashIcon, PrintIcon } from '../components/icons/Icons';
 
 interface TransactionsPageProps {
   repName: string;
-  addMultipleTransactions: (items: Omit<Transaction, 'id' | 'date' | 'repName' | 'clientName'>[], clientName: string) => void;
+  addMultipleTransactions: (items: Omit<Transaction, 'id' | 'date' | 'repName' | 'clientName' | 'userEmail'>[], clientName: string) => void;
 }
 
-type TransactionItem = Omit<Transaction, 'id' | 'date' | 'repName' | 'clientName'>;
-
-type ReceiptData = {
-  items: TransactionItem[];
-  clientName: string;
-  repName: string;
-  grandTotal: number;
-  date: string;
-};
+type TransactionItem = Omit<Transaction, 'id' | 'date' | 'repName' | 'clientName' | 'userEmail'>;
 
 export function TransactionsPage({ repName, addMultipleTransactions }: TransactionsPageProps) {
   const [clientName, setClientName] = useState('');
@@ -25,7 +17,7 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
   const [weight, setWeight] = useState('');
   const [items, setItems] = useState<TransactionItem[]>([]);
   const [message, setMessage] = useState('');
-  const [lastTransactionForReceipt, setLastTransactionForReceipt] = useState<ReceiptData | null>(null);
+  const [receiptData, setReceiptData] = useState<{ items: TransactionItem[], clientName: string, repName: string, grandTotal: number } | null>(null);
   
   useEffect(() => {
     setMaterial(RATE_SHEETS[rateSheet][0].type);
@@ -33,6 +25,8 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
 
   const handleAddItem = (e: React.FormEvent) => {
     e.preventDefault();
+    setReceiptData(null);
+    setMessage('');
     const weightNum = parseFloat(weight);
     if (!clientName.trim()) {
         setMessage('Please enter a client name first.');
@@ -66,105 +60,102 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
   const grandTotal = items.reduce((sum, item) => sum + item.total, 0);
 
   const handleSaveAll = () => {
-    if (items.length === 0 || !clientName.trim()) {
-        setMessage('Please add items and a client name before saving.');
-        setTimeout(() => setMessage(''), 3000);
-        return;
-    };
-
-    const receiptData: ReceiptData = {
-        items: [...items],
-        clientName: clientName.trim(),
-        repName: repName,
-        grandTotal: grandTotal,
-        date: new Date().toLocaleString('en-ZA'),
-    };
-
+    if (items.length === 0) return;
     addMultipleTransactions(items, clientName.trim());
-    
-    setLastTransactionForReceipt(receiptData);
+    setReceiptData({ items, clientName: clientName.trim(), repName, grandTotal });
     setItems([]);
     setClientName('');
-    setMessage(`Transaction saved! You can now print a receipt.`);
+    setMessage(`${items.length} transaction(s) saved. You can now print the receipt.`);
   }
-
+  
   const handlePrintReceipt = () => {
-      if (!lastTransactionForReceipt) return;
+    if (!receiptData) return;
 
-      const { items, clientName, repName, grandTotal, date } = lastTransactionForReceipt;
+    const { items, clientName, repName, grandTotal } = receiptData;
 
-      const receiptContent = `
+    const receiptContent = `
         <html>
-          <head>
+        <head>
             <title>Umvuzo Receipt</title>
             <style>
-              @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono&display=swap');
-              body { font-family: 'Roboto Mono', monospace; font-size: 12px; color: #000; }
-              .receipt { width: 300px; margin: 0 auto; padding: 15px; }
-              h1 { font-size: 18px; text-align: center; margin: 0 0 10px; }
-              p { margin: 2px 0; }
-              hr { border: 0; border-top: 1px dashed #000; margin: 10px 0; }
-              table { width: 100%; border-collapse: collapse; }
-              th, td { padding: 4px 0; }
-              .text-right { text-align: right; }
-              .total-row td { padding-top: 8px; border-top: 1px solid #000; font-weight: bold; }
-              .footer { text-align: center; margin-top: 15px; }
-              @media print {
-                body { margin: 0; }
-                .receipt { box-shadow: none; }
-              }
+                body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; color: #333; }
+                .container { max-width: 300px; margin: auto; }
+                .header { text-align: center; margin-bottom: 20px; }
+                .header h1 { margin: 0; font-size: 1.5em; color: #0b6000; }
+                .header p { margin: 0; font-size: 0.9em; color: #ff6600; }
+                .info { margin-bottom: 15px; border-bottom: 1px dashed #ccc; padding-bottom: 10px; font-size: 0.8em; }
+                .info p { margin: 4px 0; }
+                table { width: 100%; border-collapse: collapse; font-size: 0.8em; }
+                th, td { padding: 5px; text-align: left; }
+                th { border-bottom: 1px solid #333; }
+                .text-right { text-align: right; }
+                .total { margin-top: 15px; text-align: right; border-top: 2px double #333; padding-top: 10px; }
+                .total h2 { margin: 0; font-size: 1.2em; }
+                .footer { text-align: center; margin-top: 25px; font-style: italic; color: #555; font-size: 0.8em; }
+                @media print {
+                  body { margin: 0; }
+                  .container { box-shadow: none; border: none; }
+                }
             </style>
-          </head>
-          <body>
-            <div class="receipt">
-              <h1>Umvuzo Digital</h1>
-              <p style="text-align: center;">Transaction Receipt</p>
-              <hr />
-              <p><strong>Date:</strong> ${date}</p>
-              <p><strong>Client:</strong> ${clientName}</p>
-              <p><strong>Rep:</strong> ${repName}</p>
-              <hr />
-              <table>
-                <thead>
-                  <tr>
-                    <th>Material</th>
-                    <th class="text-right">Weight</th>
-                    <th class="text-right">Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${items.map(item => `
-                    <tr>
-                      <td>${item.material}</td>
-                      <td class="text-right">${item.weight.toFixed(2)}kg</td>
-                      <td class="text-right">R ${item.total.toFixed(2)}</td>
-                    </tr>
-                  `).join('')}
-                </tbody>
-                <tfoot>
-                  <tr class="total-row">
-                    <td colspan="2">GRAND TOTAL</td>
-                    <td class="text-right">R ${grandTotal.toFixed(2)}</td>
-                  </tr>
-                </tfoot>
-              </table>
-              <hr />
-              <div class="footer">
-                <p>Thank you!</p>
-              </div>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>Umvuzo</h1>
+                    <p>Customer Receipt</p>
+                </div>
+                <div class="info">
+                    <p><strong>Date:</strong> ${new Date().toLocaleString()}</p>
+                    <p><strong>Client:</strong> ${clientName}</p>
+                    <p><strong>Rep:</strong> ${repName}</p>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Material</th>
+                            <th class="text-right">Kg</th>
+                            <th class="text-right">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${items.map(item => `
+                            <tr>
+                                <td>${item.material}</td>
+                                <td class="text-right">${item.weight.toFixed(2)}</td>
+                                <td class="text-right">R ${item.total.toFixed(2)}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+                <div class="total">
+                    <h2>Grand Total: R ${grandTotal.toFixed(2)}</h2>
+                </div>
+                <div class="footer">
+                    <p>Thank you for your business!</p>
+                </div>
             </div>
-          </body>
+        </body>
         </html>
-      `;
-      
-      const printWindow = window.open('', '_blank', 'height=600,width=400');
-      if (printWindow) {
+    `;
+
+    const printWindow = window.open('', '_blank', 'height=600,width=400');
+    if (printWindow) {
         printWindow.document.write(receiptContent);
         printWindow.document.close();
         printWindow.focus();
-        printWindow.print();
-      }
-    };
+        setTimeout(() => {
+          printWindow.print();
+        }, 250);
+    } else {
+        alert('Please allow popups to print the receipt.');
+    }
+  };
+
+  const handleClientNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setClientName(e.target.value);
+    setReceiptData(null);
+    setMessage('');
+  };
 
   return (
     <div>
@@ -179,15 +170,7 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
               </div>
               <div>
                 <label htmlFor="client-name" className="block text-sm font-medium text-gray-700">Client Name</label>
-                <input id="client-name" type="text" value={clientName} 
-                  onChange={e => {
-                      setClientName(e.target.value);
-                      if (lastTransactionForReceipt) {
-                        setLastTransactionForReceipt(null);
-                        setMessage('');
-                      }
-                  }} 
-                  placeholder="Enter client name" disabled={items.length > 0} className="mt-1 w-full p-2 border border-gray-300 rounded-md focus:ring-brand-orange focus:border-brand-orange disabled:bg-gray-200" />
+                <input id="client-name" type="text" value={clientName} onChange={handleClientNameChange} placeholder="Enter client name" disabled={items.length > 0} className="mt-1 w-full p-2 border border-gray-300 rounded-md focus:ring-brand-orange focus:border-brand-orange disabled:bg-gray-200" />
               </div>
           </div>
 
@@ -248,15 +231,16 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
                     <p className="text-lg text-gray-600">Grand Total</p>
                     <p className="text-4xl font-bold text-brand-orange">R {grandTotal.toFixed(2)}</p>
                  </div>
-                 <button onClick={handleSaveAll} disabled={items.length === 0} className="w-full py-3 px-4 text-lg font-semibold text-white bg-brand-orange rounded-lg shadow-md hover:opacity-90 disabled:bg-gray-400 disabled:cursor-not-allowed">
-                    Complete & Save All ({items.length})
-                 </button>
-                 {lastTransactionForReceipt && (
-                    <button onClick={handlePrintReceipt} className="w-full flex justify-center items-center gap-2 py-3 px-4 font-semibold text-white bg-brand-green rounded-lg shadow-md hover:opacity-90 transition-colors">
-                        <PrintIcon className="h-5 w-5" />
+                 {receiptData ? (
+                    <button onClick={handlePrintReceipt} className="w-full flex justify-center items-center gap-2 py-3 px-4 text-lg font-semibold text-white bg-brand-green rounded-lg shadow-md hover:opacity-90 transition-colors">
+                        <PrintIcon className="h-6 w-6" />
                         Print Receipt
                     </button>
-                 )}
+                  ) : (
+                    <button onClick={handleSaveAll} disabled={items.length === 0} className="w-full py-3 px-4 text-lg font-semibold text-white bg-brand-orange rounded-lg shadow-md hover:opacity-90 disabled:bg-gray-400 disabled:cursor-not-allowed">
+                        Complete & Save All ({items.length})
+                    </button>
+                  )}
                  {message && <p className="text-center text-green-600 font-medium mt-2">{message}</p>}
             </div>
         </div>

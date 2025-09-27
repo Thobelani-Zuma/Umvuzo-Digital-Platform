@@ -29,6 +29,7 @@ export interface Transaction {
   pricePerKg: number;
   total: number;
   date: string;
+  userEmail: string;
 }
 
 export type TransactionData = {
