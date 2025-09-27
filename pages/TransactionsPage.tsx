@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { RATE_SHEETS } from '../constants';
 import { Transaction } from '../types';
-import { PlusIcon, TrashIcon } from '../components/icons/Icons';
+import { PlusIcon, TrashIcon, PrintIcon } from '../components/icons/Icons';
 
 interface TransactionsPageProps {
   repName: string;
@@ -10,6 +10,14 @@ interface TransactionsPageProps {
 
 type TransactionItem = Omit<Transaction, 'id' | 'date' | 'repName' | 'clientName'>;
 
+type ReceiptData = {
+  items: TransactionItem[];
+  clientName: string;
+  repName: string;
+  grandTotal: number;
+  date: string;
+};
+
 export function TransactionsPage({ repName, addMultipleTransactions }: TransactionsPageProps) {
   const [clientName, setClientName] = useState('');
   const [rateSheet, setRateSheet] = useState(Object.keys(RATE_SHEETS)[0]);
@@ -17,6 +25,7 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
   const [weight, setWeight] = useState('');
   const [items, setItems] = useState<TransactionItem[]>([]);
   const [message, setMessage] = useState('');
+  const [lastTransactionForReceipt, setLastTransactionForReceipt] = useState<ReceiptData | null>(null);
   
   useEffect(() => {
     setMaterial(RATE_SHEETS[rateSheet][0].type);
@@ -39,9 +48,6 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
     const materialData = RATE_SHEETS[rateSheet].find(m => m.type === material);
     if (!materialData) return;
     
-    // FIX: Removed `clientName` property from `newItem` object.
-    // The `TransactionItem` type does not include `clientName` because it is
-    // handled for the entire batch of items when saved.
     const newItem: TransactionItem = {
       material: material,
       weight: weightNum,
@@ -57,16 +63,108 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
     setItems(items.filter((_, i) => i !== index));
   };
   
+  const grandTotal = items.reduce((sum, item) => sum + item.total, 0);
+
   const handleSaveAll = () => {
-    if (items.length === 0) return;
+    if (items.length === 0 || !clientName.trim()) {
+        setMessage('Please add items and a client name before saving.');
+        setTimeout(() => setMessage(''), 3000);
+        return;
+    };
+
+    const receiptData: ReceiptData = {
+        items: [...items],
+        clientName: clientName.trim(),
+        repName: repName,
+        grandTotal: grandTotal,
+        date: new Date().toLocaleString('en-ZA'),
+    };
+
     addMultipleTransactions(items, clientName.trim());
+    
+    setLastTransactionForReceipt(receiptData);
     setItems([]);
     setClientName('');
-    setMessage(`${items.length} transaction(s) saved successfully!`);
-    setTimeout(() => setMessage(''), 3000);
+    setMessage(`Transaction saved! You can now print a receipt.`);
   }
 
-  const grandTotal = items.reduce((sum, item) => sum + item.total, 0);
+  const handlePrintReceipt = () => {
+      if (!lastTransactionForReceipt) return;
+
+      const { items, clientName, repName, grandTotal, date } = lastTransactionForReceipt;
+
+      const receiptContent = `
+        <html>
+          <head>
+            <title>Umvuzo Receipt</title>
+            <style>
+              @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono&display=swap');
+              body { font-family: 'Roboto Mono', monospace; font-size: 12px; color: #000; }
+              .receipt { width: 300px; margin: 0 auto; padding: 15px; }
+              h1 { font-size: 18px; text-align: center; margin: 0 0 10px; }
+              p { margin: 2px 0; }
+              hr { border: 0; border-top: 1px dashed #000; margin: 10px 0; }
+              table { width: 100%; border-collapse: collapse; }
+              th, td { padding: 4px 0; }
+              .text-right { text-align: right; }
+              .total-row td { padding-top: 8px; border-top: 1px solid #000; font-weight: bold; }
+              .footer { text-align: center; margin-top: 15px; }
+              @media print {
+                body { margin: 0; }
+                .receipt { box-shadow: none; }
+              }
+            </style>
+          </head>
+          <body>
+            <div class="receipt">
+              <h1>Umvuzo Digital</h1>
+              <p style="text-align: center;">Transaction Receipt</p>
+              <hr />
+              <p><strong>Date:</strong> ${date}</p>
+              <p><strong>Client:</strong> ${clientName}</p>
+              <p><strong>Rep:</strong> ${repName}</p>
+              <hr />
+              <table>
+                <thead>
+                  <tr>
+                    <th>Material</th>
+                    <th class="text-right">Weight</th>
+                    <th class="text-right">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${items.map(item => `
+                    <tr>
+                      <td>${item.material}</td>
+                      <td class="text-right">${item.weight.toFixed(2)}kg</td>
+                      <td class="text-right">R ${item.total.toFixed(2)}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+                <tfoot>
+                  <tr class="total-row">
+                    <td colspan="2">GRAND TOTAL</td>
+                    <td class="text-right">R ${grandTotal.toFixed(2)}</td>
+                  </tr>
+                </tfoot>
+              </table>
+              <hr />
+              <div class="footer">
+                <p>Thank you!</p>
+              </div>
+            </div>
+          </body>
+        </html>
+      `;
+      
+      const printWindow = window.open('', '_blank', 'height=600,width=400');
+      if (printWindow) {
+        printWindow.document.write(receiptContent);
+        printWindow.document.close();
+        printWindow.focus();
+        printWindow.print();
+      }
+    };
 
   return (
     <div>
@@ -81,7 +179,15 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
               </div>
               <div>
                 <label htmlFor="client-name" className="block text-sm font-medium text-gray-700">Client Name</label>
-                <input id="client-name" type="text" value={clientName} onChange={e => setClientName(e.target.value)} placeholder="Enter client name" disabled={items.length > 0} className="mt-1 w-full p-2 border border-gray-300 rounded-md focus:ring-brand-orange focus:border-brand-orange disabled:bg-gray-200" />
+                <input id="client-name" type="text" value={clientName} 
+                  onChange={e => {
+                      setClientName(e.target.value);
+                      if (lastTransactionForReceipt) {
+                        setLastTransactionForReceipt(null);
+                        setMessage('');
+                      }
+                  }} 
+                  placeholder="Enter client name" disabled={items.length > 0} className="mt-1 w-full p-2 border border-gray-300 rounded-md focus:ring-brand-orange focus:border-brand-orange disabled:bg-gray-200" />
               </div>
           </div>
 
@@ -145,7 +251,13 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
                  <button onClick={handleSaveAll} disabled={items.length === 0} className="w-full py-3 px-4 text-lg font-semibold text-white bg-brand-orange rounded-lg shadow-md hover:opacity-90 disabled:bg-gray-400 disabled:cursor-not-allowed">
                     Complete & Save All ({items.length})
                  </button>
-                 {message && <p className="text-center text-green-600 font-medium">{message}</p>}
+                 {lastTransactionForReceipt && (
+                    <button onClick={handlePrintReceipt} className="w-full flex justify-center items-center gap-2 py-3 px-4 font-semibold text-white bg-brand-green rounded-lg shadow-md hover:opacity-90 transition-colors">
+                        <PrintIcon className="h-5 w-5" />
+                        Print Receipt
+                    </button>
+                 )}
+                 {message && <p className="text-center text-green-600 font-medium mt-2">{message}</p>}
             </div>
         </div>
       </div>
