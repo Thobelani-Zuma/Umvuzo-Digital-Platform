@@ -29,19 +29,6 @@ const pageTitles: { [key in Page]?: string } = {
 export function DashboardLayout({ user, activePage, setActivePage, onLogout, transactions, allTransactions, addMultipleTransactions }: DashboardLayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  const renderRepPage = () => {
-    switch (activePage) {
-      case Page.Dashboard:
-        return <DashboardPage transactions={transactions} />;
-      case Page.Transactions:
-        return <TransactionsPage repName={user.name} addMultipleTransactions={addMultipleTransactions} />;
-      case Page.Reports:
-        return <ReportsPage transactions={transactions} />;
-      default:
-        return <DashboardPage transactions={transactions} />;
-    }
-  };
-
   const handleSetActivePage = (page: Page) => {
     setActivePage(page);
     setIsSidebarOpen(false);
@@ -85,9 +72,19 @@ export function DashboardLayout({ user, activePage, setActivePage, onLogout, tra
         
         <main className="flex-1 overflow-y-auto p-4 md:p-8">
             {user.role === 'admin' ? (
-            <AdminDashboardPage allTransactions={allTransactions} />
+              <AdminDashboardPage allTransactions={allTransactions} />
             ) : (
-            renderRepPage()
+              <>
+                <div style={{ display: activePage === Page.Dashboard ? 'block' : 'none' }}>
+                  <DashboardPage transactions={transactions} />
+                </div>
+                <div style={{ display: activePage === Page.Transactions ? 'block' : 'none' }}>
+                  <TransactionsPage repName={user.name} addMultipleTransactions={addMultipleTransactions} />
+                </div>
+                <div style={{ display: activePage === Page.Reports ? 'block' : 'none' }}>
+                  <ReportsPage transactions={transactions} />
+                </div>
+              </>
             )}
         </main>
       </div>

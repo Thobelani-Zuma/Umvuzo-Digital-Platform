@@ -3,21 +3,6 @@ import { LoginPage } from './pages/LoginPage';
 import { DashboardLayout } from './components/DashboardLayout';
 import { Page, Transaction, User, TransactionData } from './types';
 import { auth, db } from './services/firebase';
-import { 
-  onAuthStateChanged, 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword, 
-  signOut,
-  updateProfile
-} from 'firebase/auth';
-import { 
-  collection, 
-  addDoc, 
-  query, 
-  where, 
-  onSnapshot, 
-  orderBy 
-} from 'firebase/firestore';
 
 export function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -26,7 +11,8 @@ export function App() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    // FIX: Switched to Firebase v8 namespaced API for auth state changes
+    const unsubscribe = auth.onAuthStateChanged((user) => {
       if (user && user.email) {
         const isAdmin = user.email.toLowerCase() === 'media@isphepho.co.za';
         const name = user.displayName || user.email.split('@')[0].replace(/\./g, ' ').replace(/(^\w|\s\w)/g, m => m.toUpperCase());
@@ -51,15 +37,19 @@ export function App() {
       return;
     }
 
-    const transactionsCol = collection(db, 'transactions');
+    // FIX: Switched to Firebase v8 namespaced API for Firestore queries
+    const transactionsCol = db.collection('transactions');
     let q;
     if (currentUser.role === 'admin') {
-      q = query(transactionsCol, orderBy('date', 'desc'));
+      // FIX: Switched to Firebase v8 namespaced API for Firestore queries
+      q = transactionsCol.orderBy('date', 'desc');
     } else {
-      q = query(transactionsCol, where('userEmail', '==', currentUser.email), orderBy('date', 'desc'));
+      // FIX: Switched to Firebase v8 namespaced API for Firestore queries
+      q = transactionsCol.where('userEmail', '==', currentUser.email).orderBy('date', 'desc');
     }
 
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+    // FIX: Switched to Firebase v8 namespaced API for Firestore queries
+    const unsubscribe = q.onSnapshot((querySnapshot) => {
       const allTransactions: Transaction[] = [];
       querySnapshot.forEach((doc) => {
         // Make sure to include the document ID
@@ -88,12 +78,15 @@ export function App() {
 
 
   const handleLogin = async (email: string, password: string): Promise<void> => {
-    await signInWithEmailAndPassword(auth, email, password);
+    // FIX: Switched to Firebase v8 namespaced API for signing in
+    await auth.signInWithEmailAndPassword(email, password);
   };
 
   const handleRegister = async (name: string, email: string, password: string): Promise<void> => {
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    await updateProfile(userCredential.user, { displayName: name });
+    // FIX: Switched to Firebase v8 namespaced API for creating user
+    const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+    // FIX: Switched to Firebase v8 namespaced API for updating profile
+    await userCredential.user!.updateProfile({ displayName: name });
     
     // The onAuthStateChanged listener handles logins and session persistence,
     // but it can experience a race condition with updateProfile on new registrations,
@@ -102,7 +95,7 @@ export function App() {
     // set the current user state here. This state will be used until the next
     // refresh or login, at which point onAuthStateChanged will take over
     // with the persisted displayName from the user's profile.
-    const user = userCredential.user;
+    const user = userCredential.user!;
     const isAdmin = user.email!.toLowerCase() === 'media@isphepho.co.za';
     
     setCurrentUser({
@@ -115,7 +108,8 @@ export function App() {
   };
 
   const handleLogout = async (): Promise<void> => {
-    await signOut(auth);
+    // FIX: Switched to Firebase v8 namespaced API for signing out
+    await auth.signOut();
   };
   
   const addMultipleTransactions = async (items: Omit<Transaction, 'id' | 'date' | 'repName' | 'clientName' | 'userEmail'>[], clientName: string) => {
@@ -129,9 +123,11 @@ export function App() {
           userEmail: currentUser.email,
       }));
       
-      const transactionCollection = collection(db, 'transactions');
+      // FIX: Switched to Firebase v8 namespaced API for Firestore collections
+      const transactionCollection = db.collection('transactions');
       for (const tx of transactionsToAdd) {
-        await addDoc(transactionCollection, tx);
+        // FIX: Switched to Firebase v8 namespaced API for adding documents
+        await transactionCollection.add(tx);
       }
   };
 

@@ -1,8 +1,10 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { TransactionData } from '../types';
-import { PayoutIcon, WeightIcon, UsersIcon, SearchIcon, ReportIcon } from '../components/icons/Icons';
+import { PayoutIcon, WeightIcon, UsersIcon, SearchIcon, ReportIcon, CashIcon } from '../components/icons/Icons';
 import { generateReportPDF } from '../services/reportService';
+import { db } from '../services/firebase';
+
 
 const StatCard = ({ icon, title, value, color }: { icon: React.ReactNode, title: string, value: string, color: string }) => (
     <div className="bg-white p-6 rounded-xl shadow-md flex items-center">
@@ -18,8 +20,27 @@ const StatCard = ({ icon, title, value, color }: { icon: React.ReactNode, title:
 
 export function AdminDashboardPage({ allTransactions }: { allTransactions: TransactionData }) {
   const [searchTerm, setSearchTerm] = useState('');
+  const [openingBalance, setOpeningBalance] = useState('');
+  const [balanceMessage, setBalanceMessage] = useState('');
 
-  const { flatTransactions, totalPayout, totalWeight, repCount, repPerformanceData } = useMemo(() => {
+  useEffect(() => {
+    const fetchBalances = async () => {
+      const todayStr = new Date().toISOString().split('T')[0];
+      const balanceDocRef = db.collection('dailyBalances').doc(todayStr);
+      try {
+        const docSnap = await balanceDocRef.get();
+        if (docSnap.exists) {
+          const data = docSnap.data()!;
+          setOpeningBalance(data.openingBalance?.toString() || '');
+        }
+      } catch (error) {
+        console.error("Error fetching balances:", error);
+      }
+    };
+    fetchBalances();
+  }, []);
+
+  const { flatTransactions, totalPayout, totalWeight, repCount, repPerformanceData, todaysPayout } = useMemo(() => {
     const allTxs = Object.values(allTransactions).flat();
     
     const payout = allTxs.reduce((sum, tx) => sum + tx.total, 0);
@@ -33,14 +54,54 @@ export function AdminDashboardPage({ allTransactions }: { allTransactions: Trans
         return { name: repName, kg: parseFloat(totalWeight.toFixed(2)) };
     }).sort((a,b) => b.kg - a.kg);
     
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
+    
+    const todaysTxs = allTxs.filter(tx => {
+        const txDate = new Date(tx.date);
+        return txDate >= todayStart && txDate <= todayEnd;
+    });
+    const dailyPayout = todaysTxs.reduce((sum, tx) => sum + tx.total, 0);
+
     return {
       flatTransactions: allTxs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
       totalPayout: payout,
       totalWeight: weight,
       repCount: reps.size,
       repPerformanceData: performance,
+      todaysPayout: dailyPayout,
     };
   }, [allTransactions]);
+
+  const calculatedClosingBalance = parseFloat(openingBalance || '0') - todaysPayout;
+
+  const handleSaveBalances = async () => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const ob = parseFloat(openingBalance);
+
+    if (isNaN(ob)) {
+      setBalanceMessage('Please enter a valid number for the opening balance.');
+      setTimeout(() => setBalanceMessage(''), 3000);
+      return;
+    }
+
+    const balanceDocRef = db.collection('dailyBalances').doc(todayStr);
+    try {
+      await balanceDocRef.set({ 
+        openingBalance: ob, 
+        closingBalance: calculatedClosingBalance, // Save the auto-calculated value
+        date: todayStr 
+      }, { merge: true });
+      setBalanceMessage('Opening Balance saved successfully!');
+      setTimeout(() => setBalanceMessage(''), 3000);
+    } catch (error) {
+      console.error("Error saving balances: ", error);
+      setBalanceMessage('Failed to save balance.');
+      setTimeout(() => setBalanceMessage(''), 3000);
+    }
+  };
 
   const filteredTransactions = useMemo(() => {
     if (!searchTerm) return flatTransactions;
@@ -57,9 +118,11 @@ export function AdminDashboardPage({ allTransactions }: { allTransactions: Trans
   }, [filteredTransactions]);
 
   const handleDownloadReport = () => {
-    // We pass all transactions, and the service will handle the rest for the 'admin' type.
     const allTxs = Object.values(allTransactions).flat();
-    generateReportPDF('admin', allTxs);
+    generateReportPDF('admin', allTxs, {
+        opening: parseFloat(openingBalance || '0'),
+        closing: calculatedClosingBalance,
+    });
   };
 
   return (
@@ -71,10 +134,11 @@ export function AdminDashboardPage({ allTransactions }: { allTransactions: Trans
             className="flex items-center justify-center gap-2 py-2 px-4 font-semibold text-white bg-brand-orange rounded-lg shadow-md hover:opacity-90"
           >
             <ReportIcon className="h-5 w-5" />
-            Download Report
+            Download Full Report
           </button>
       </div>
       
+      <h2 className="text-xl font-semibold text-gray-700 mb-4">Lifetime Stats</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         <StatCard 
             icon={<UsersIcon className="h-8 w-8 text-white"/>} 
@@ -97,9 +161,39 @@ export function AdminDashboardPage({ allTransactions }: { allTransactions: Trans
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 mb-8">
+        {/* Daily Financials Card */}
+        <div className="bg-white p-6 rounded-xl shadow-md space-y-4">
+            <h2 className="text-xl font-semibold text-gray-700 mb-2">Today's Financials</h2>
+            <div>
+                <div>
+                    <label htmlFor="opening-balance" className="block text-sm font-medium text-gray-700">Opening Balance (R)</label>
+                    <input id="opening-balance" type="number" step="0.01" value={openingBalance} onChange={e => setOpeningBalance(e.target.value)} placeholder="0.00" className="mt-1 w-full p-2 border border-gray-300 rounded-md focus:ring-brand-orange focus:border-brand-orange" />
+                </div>
+            </div>
+            <button onClick={handleSaveBalances} className="w-full py-2 px-4 font-semibold text-white bg-brand-green rounded-lg shadow-sm hover:opacity-90">
+                Save Opening Balance
+            </button>
+            {balanceMessage && <p className="text-center text-sm text-green-600">{balanceMessage}</p>}
+            <div className="pt-4 border-t space-y-4">
+                <StatCard 
+                    icon={<PayoutIcon className="h-8 w-8 text-white"/>}
+                    title="Today's Payouts"
+                    value={`R ${todaysPayout.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                    color="bg-red-500"
+                />
+                <StatCard 
+                    icon={<CashIcon className="h-8 w-8 text-white"/>}
+                    title="Auto-Calculated Closing Balance"
+                    value={`R ${calculatedClosingBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                    color="bg-blue-500"
+                />
+            </div>
+        </div>
+
+        {/* Performance Chart */}
         <div className="bg-white p-6 rounded-xl shadow-md">
             <h2 className="text-xl font-semibold text-gray-700 mb-4">Performance by Representative (kg)</h2>
-            <div style={{ width: '100%', height: 300 }}>
+            <div style={{ width: '100%', height: 350 }}>
                 <ResponsiveContainer>
                     <BarChart data={repPerformanceData} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                         <XAxis type="number" />
@@ -110,9 +204,6 @@ export function AdminDashboardPage({ allTransactions }: { allTransactions: Trans
                     </BarChart>
                 </ResponsiveContainer>
             </div>
-        </div>
-        <div className="bg-white p-6 rounded-xl shadow-md flex items-center justify-center text-gray-400">
-            <p>Additional charts and analytics coming soon.</p>
         </div>
       </div>
       

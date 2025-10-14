@@ -3,7 +3,7 @@ import autoTable from 'jspdf-autotable';
 import { Transaction } from '../types';
 
 // FIX: Added 'admin' to the report type union to allow generating a full report from the admin dashboard.
-export const generateReportPDF = (type: 'daily' | 'monthly' | 'material' | 'admin', transactions: Transaction[]) => {
+export const generateReportPDF = (type: 'daily' | 'monthly' | 'material' | 'admin', transactions: Transaction[], balances?: { opening: number, closing: number }) => {
   let filteredTransactions: Transaction[] = [];
   const today = new Date();
 
@@ -61,8 +61,20 @@ export const generateReportPDF = (type: 'daily' | 'monthly' | 'material' | 'admi
 
   const finalY = (doc as any).lastAutoTable.finalY || 200;
   doc.setFontSize(12);
-  doc.text(`Total Paid: R ${totalPaid.toFixed(2)}`, 14, finalY + 15);
-  doc.text(`Total Kg: ${totalKg.toFixed(2)} kg`, 14, finalY + 22);
+
+  if (type === 'admin' && balances && balances.opening > 0) {
+      const calculatedClosing = balances.opening - totalPaid;
+      doc.text(`Financial Summary`, 14, finalY + 15);
+      doc.setFontSize(11);
+      doc.setTextColor(0);
+      doc.text(`Today's Opening Balance: R ${balances.opening.toFixed(2)}`, 14, finalY + 22);
+      doc.text(`Total Payouts (for report period): R ${totalPaid.toFixed(2)}`, 14, finalY + 29);
+      doc.text(`Calculated Closing Balance: R ${calculatedClosing.toFixed(2)}`, 14, finalY + 36);
+      doc.text(`Total Kg (for report period): ${totalKg.toFixed(2)} kg`, 14, finalY + 43);
+  } else {
+      doc.text(`Total Paid: R ${totalPaid.toFixed(2)}`, 14, finalY + 15);
+      doc.text(`Total Kg: ${totalKg.toFixed(2)} kg`, 14, finalY + 22);
+  }
   
   doc.save(`${type}_report_${new Date().toISOString().split('T')[0]}.pdf`);
 };

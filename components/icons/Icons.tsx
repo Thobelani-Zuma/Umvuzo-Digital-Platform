@@ -22,7 +22,10 @@ export const WeightIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" {...props}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 20V10M12 10L6 4m6 6l6-6" /></svg>
 );
 export const PayoutIcon = (props: React.SVGProps<SVGSVGElement>) => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" {...props}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v.01" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v-1m0 12v-1" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18.01V18" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 10c.342-.507.962-.8 1.697-.8 1.295 0 2.303 1.05 2.303 2.342 0 .34-.06.66-.17.95" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 10c-.342-.507-.962-.8-1.697-.8-1.295 0-2.303 1.05-2.303 2.342 0 .34.06.66.17.95" /></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 8v8m0-8h3a2 2 0 010 4h-3m1.5 0l2 4" />
+    </svg>
 );
 export const PlusIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" {...props}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
@@ -44,4 +47,7 @@ export const MenuIcon = (props: React.SVGProps<SVGSVGElement>) => (
 );
 export const PrintIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" {...props}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm2-9V5a2 2 0 012-2h2a2 2 0 012 2v3m-4 0h4" /></svg>
+);
+export const CashIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" {...props}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z M13 12v4m0-4h1.5a1 1 0 010 2h-1.5m.75 0l1 2" /></svg>
 );
