@@ -21,7 +21,7 @@ const StatCard = ({ icon, title, value, color }: { icon: React.ReactNode, title:
 export function AdminDashboardPage({ allTransactions }: { allTransactions: TransactionData }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [openingBalance, setOpeningBalance] = useState('');
-  const [balanceMessage, setBalanceMessage] = useState('');
+  const [balanceMessage, setBalanceMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [isResetting, setIsResetting] = useState(false);
 
   useEffect(() => {
@@ -79,12 +79,13 @@ export function AdminDashboardPage({ allTransactions }: { allTransactions: Trans
   const calculatedClosingBalance = parseFloat(openingBalance || '0') - todaysPayout;
 
   const handleSaveBalances = async () => {
+    setBalanceMessage(null);
     const todayStr = new Date().toISOString().split('T')[0];
     const ob = parseFloat(openingBalance);
 
     if (isNaN(ob)) {
-      setBalanceMessage('Please enter a valid number for the opening balance.');
-      setTimeout(() => setBalanceMessage(''), 3000);
+      setBalanceMessage({ text: 'Please enter a valid number for the opening balance.', type: 'error' });
+      setTimeout(() => setBalanceMessage(null), 3000);
       return;
     }
 
@@ -92,15 +93,15 @@ export function AdminDashboardPage({ allTransactions }: { allTransactions: Trans
     try {
       await balanceDocRef.set({ 
         openingBalance: ob, 
-        closingBalance: calculatedClosingBalance, // Save the auto-calculated value
+        closingBalance: calculatedClosingBalance,
         date: todayStr 
       }, { merge: true });
-      setBalanceMessage('Opening Balance saved successfully!');
-      setTimeout(() => setBalanceMessage(''), 3000);
+      setBalanceMessage({ text: 'Opening Balance saved successfully!', type: 'success' });
+      setTimeout(() => setBalanceMessage(null), 3000);
     } catch (error) {
       console.error("Error saving balances: ", error);
-      setBalanceMessage('Failed to save balance.');
-      setTimeout(() => setBalanceMessage(''), 3000);
+      setBalanceMessage({ text: 'Failed to save balance. Check console for details.', type: 'error' });
+      setTimeout(() => setBalanceMessage(null), 5000);
     }
   };
 
@@ -212,7 +213,11 @@ export function AdminDashboardPage({ allTransactions }: { allTransactions: Trans
             <button onClick={handleSaveBalances} className="w-full py-2 px-4 font-semibold text-white bg-brand-green rounded-lg shadow-sm hover:opacity-90">
                 Save Opening Balance
             </button>
-            {balanceMessage && <p className="text-center text-sm text-green-600">{balanceMessage}</p>}
+            {balanceMessage && (
+              <p className={`text-center text-sm font-medium ${balanceMessage.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+                {balanceMessage.text}
+              </p>
+            )}
             <div className="pt-4 border-t space-y-4">
                 <StatCard 
                     icon={<PayoutIcon className="h-8 w-8 text-white"/>}
