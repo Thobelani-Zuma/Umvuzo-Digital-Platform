@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { TransactionData } from '../types';
-import { PayoutIcon, WeightIcon, UsersIcon, SearchIcon, ReportIcon, CashIcon } from '../components/icons/Icons';
+import { PayoutIcon, WeightIcon, UsersIcon, SearchIcon, ReportIcon, CashIcon, TrashIcon } from '../components/icons/Icons';
 import { generateReportPDF } from '../services/reportService';
 import { db } from '../services/firebase';
 
@@ -22,6 +22,7 @@ export function AdminDashboardPage({ allTransactions }: { allTransactions: Trans
   const [searchTerm, setSearchTerm] = useState('');
   const [openingBalance, setOpeningBalance] = useState('');
   const [balanceMessage, setBalanceMessage] = useState('');
+  const [isResetting, setIsResetting] = useState(false);
 
   useEffect(() => {
     const fetchBalances = async () => {
@@ -123,6 +124,44 @@ export function AdminDashboardPage({ allTransactions }: { allTransactions: Trans
         opening: parseFloat(openingBalance || '0'),
         closing: calculatedClosingBalance,
     });
+  };
+
+  const handleResetData = async () => {
+    const confirmation = window.confirm(
+      'DANGER: Are you sure you want to delete ALL transaction and balance data from the application? This action cannot be undone.'
+    );
+
+    if (!confirmation) {
+      return;
+    }
+
+    setIsResetting(true);
+    try {
+      // Batch delete transactions
+      const transactionsQuery = await db.collection('transactions').get();
+      const transactionBatch = db.batch();
+      transactionsQuery.docs.forEach((doc) => {
+        transactionBatch.delete(doc.ref);
+      });
+      await transactionBatch.commit();
+
+      // Batch delete daily balances
+      const balancesQuery = await db.collection('dailyBalances').get();
+      const balanceBatch = db.batch();
+      balancesQuery.docs.forEach((doc) => {
+        balanceBatch.delete(doc.ref);
+      });
+      await balanceBatch.commit();
+      
+      alert('Application data has been successfully reset.');
+      setOpeningBalance('');
+
+    } catch (error) {
+      console.error("Error resetting data: ", error);
+      alert('An error occurred while resetting data. Please check the console.');
+    } finally {
+      setIsResetting(false);
+    }
   };
 
   return (
@@ -256,6 +295,25 @@ export function AdminDashboardPage({ allTransactions }: { allTransactions: Trans
                 </tfoot>
             </table>
         </div>
+      </div>
+      
+      {/* Admin Actions Card */}
+      <div className="mt-8 bg-white p-6 rounded-xl shadow-md">
+          <h2 className="text-xl font-semibold text-gray-700 mb-4">Admin Actions</h2>
+          <div className="p-4 border border-red-300 bg-red-50 rounded-lg">
+              <h3 className="font-bold text-red-800">Reset Application Data</h3>
+              <p className="text-sm text-red-600 mt-1 mb-4">
+                  This will permanently delete all transactions and daily financial records. This action cannot be reversed. User accounts will not be affected.
+              </p>
+              <button
+                  onClick={handleResetData}
+                  disabled={isResetting}
+                  className="flex items-center justify-center gap-2 py-2 px-4 font-semibold text-white bg-red-600 rounded-lg shadow-md hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+              >
+                  <TrashIcon className="h-5 w-5" />
+                  {isResetting ? 'Resetting Data...' : 'Reset All Data'}
+              </button>
+          </div>
       </div>
     </div>
   );
