@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { RATE_SHEETS } from '../constants';
 import { Transaction } from '../types';
 import { PlusIcon, TrashIcon, PrintIcon } from '../components/icons/Icons';
-import { LOGO_BASE64 } from '../components/Logo';
 
 interface TransactionsPageProps {
   repName: string;
@@ -110,8 +109,7 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
             <title>Umvuzo Transaction Receipt</title>
             <style>
               body { font-family: sans-serif; margin: 20px; color: #333; }
-              .header { display: flex; align-items: center; border-bottom: 2px solid #ccc; padding-bottom: 10px; margin-bottom: 20px; }
-              .header img { width: 80px; margin-right: 20px; }
+              .header { border-bottom: 2px solid #ccc; padding-bottom: 10px; margin-bottom: 20px; text-align: center; }
               .header h1 { margin: 0; font-size: 24px; }
               .info { margin-bottom: 20px; }
               .info p { margin: 5px 0; }
@@ -124,7 +122,6 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
           </head>
           <body>
             <div class="header">
-              <img src="${LOGO_BASE64}" alt="Umvuzo Logo" />
               <h1>Transaction Receipt</h1>
             </div>
             <div class="info">

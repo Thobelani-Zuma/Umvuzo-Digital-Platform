@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Logo } from '../components/Logo';
 
 interface LoginPageProps {
   onLogin: (email: string, password: string) => Promise<void>;
@@ -56,9 +55,6 @@ export function LoginPage({ onLogin, onRegister }: LoginPageProps) {
     <div className="flex min-h-screen items-center justify-center bg-gray-100 p-4">
       <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-xl">
         <div className="text-center mb-8">
-          <div className="flex justify-center mb-4">
-            <Logo className="h-24" />
-          </div>
           <h1 className="text-4xl font-bold text-gray-800">
             {isRegistering ? 'Create an Account' : 'Umvuzo Digital Platform'}
           </h1>
