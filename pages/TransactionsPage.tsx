@@ -6,7 +6,7 @@ import { LOGO_BASE64 } from '../components/Logo';
 
 interface TransactionsPageProps {
   repName: string;
-  addMultipleTransactions: (items: Omit<Transaction, 'id' | 'date' | 'repName' | 'clientName' | 'userEmail'>[], clientName: string) => void;
+  addMultipleTransactions: (items: Omit<Transaction, 'id' | 'date' | 'repName' | 'clientName' | 'userEmail'>[], clientName: string, transactionDate: string) => void;
 }
 
 type TransactionItem = Omit<Transaction, 'id' | 'date' | 'repName' | 'clientName' | 'userEmail'>;
@@ -19,6 +19,8 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
   const [items, setItems] = useState<TransactionItem[]>([]);
   const [pricePerKg, setPricePerKg] = useState(RATE_SHEETS[rateSheet][0].price);
   const [total, setTotal] = useState(0);
+  const [transactionDate, setTransactionDate] = useState(new Date().toISOString().split('T')[0]);
+  const [transactionTime, setTransactionTime] = useState(new Date().toTimeString().slice(0, 5));
 
   useEffect(() => {
     const newRateSheetMaterials = RATE_SHEETS[rateSheet];
@@ -77,7 +79,8 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
         return;
     }
     try {
-        await addMultipleTransactions(items, clientName);
+        const transactionDateTime = new Date(`${transactionDate}T${transactionTime}`).toISOString();
+        await addMultipleTransactions(items, clientName, transactionDateTime);
         alert('Transactions saved successfully!');
         setItems([]);
         setClientName('');
@@ -92,6 +95,8 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
         alert("Please add items and a client name before printing.");
         return;
     }
+    
+    const transactionDateTime = new Date(`${transactionDate}T${transactionTime}`);
 
     const printWindow = window.open('', '_blank');
     if (printWindow) {
@@ -119,7 +124,7 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
               <h1>Transaction Receipt</h1>
             </div>
             <div class="info">
-              <p><strong>Date:</strong> ${new Date().toLocaleString('en-ZA')}</p>
+              <p><strong>Date:</strong> ${transactionDateTime.toLocaleString('en-ZA')}</p>
               <p><strong>Rep Name:</strong> ${repName}</p>
               <p><strong>Client Name:</strong> ${clientName}</p>
             </div>
@@ -165,6 +170,16 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-1 bg-white p-6 rounded-xl shadow-md space-y-4 h-fit">
                 <h2 className="text-xl font-semibold text-gray-700">Add Item</h2>
+                 <div className="flex gap-4">
+                    <div className="flex-1">
+                        <label htmlFor="transactionDate" className="block text-sm font-medium text-gray-700">Date</label>
+                        <input type="date" id="transactionDate" value={transactionDate} onChange={e => setTransactionDate(e.target.value)} className="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-brand-orange focus:border-brand-orange" />
+                    </div>
+                    <div className="flex-1">
+                        <label htmlFor="transactionTime" className="block text-sm font-medium text-gray-700">Time</label>
+                        <input type="time" id="transactionTime" value={transactionTime} onChange={e => setTransactionTime(e.target.value)} className="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-brand-orange focus:border-brand-orange" />
+                    </div>
+                </div>
                  <div>
                     <label htmlFor="clientName" className="block text-sm font-medium text-gray-700">Client Name</label>
                     <input type="text" id="clientName" value={clientName} onChange={e => setClientName(e.target.value)} placeholder="Enter client's name" className="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-brand-orange focus:border-brand-orange" />

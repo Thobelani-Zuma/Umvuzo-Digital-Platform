@@ -112,12 +112,12 @@ export function App() {
     await auth.signOut();
   };
   
-  const addMultipleTransactions = async (items: Omit<Transaction, 'id' | 'date' | 'repName' | 'clientName' | 'userEmail'>[], clientName: string) => {
+  const addMultipleTransactions = async (items: Omit<Transaction, 'id' | 'date' | 'repName' | 'clientName' | 'userEmail'>[], clientName: string, transactionDate: string) => {
       if (!currentUser || currentUser.role !== 'rep') return;
 
       const transactionsToAdd = items.map(item => ({
           ...item,
-          date: new Date().toISOString(),
+          date: transactionDate,
           repName: currentUser.name,
           clientName: clientName,
           userEmail: currentUser.email,
