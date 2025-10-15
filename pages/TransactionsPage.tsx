@@ -20,7 +20,9 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
   const [pricePerKg, setPricePerKg] = useState(RATE_SHEETS[rateSheet][0].price);
   const [total, setTotal] = useState(0);
   const [transactionDate, setTransactionDate] = useState(new Date().toISOString().split('T')[0]);
-  const [transactionTime, setTransactionTime] = useState(new Date().toTimeString().slice(0, 5));
+  const [timePeriod, setTimePeriod] = useState<'AM' | 'PM'>(() => {
+    return new Date().getHours() < 12 ? 'AM' : 'PM';
+  });
 
   useEffect(() => {
     const newRateSheetMaterials = RATE_SHEETS[rateSheet];
@@ -79,7 +81,8 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
         return;
     }
     try {
-        const transactionDateTime = new Date(`${transactionDate}T${transactionTime}`).toISOString();
+        const time = timePeriod === 'AM' ? '10:00:00' : '14:00:00';
+        const transactionDateTime = new Date(`${transactionDate}T${time}`).toISOString();
         await addMultipleTransactions(items, clientName, transactionDateTime);
         alert('Transactions saved successfully!');
         setItems([]);
@@ -96,7 +99,8 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
         return;
     }
     
-    const transactionDateTime = new Date(`${transactionDate}T${transactionTime}`);
+    const time = timePeriod === 'AM' ? '10:00:00' : '14:00:00';
+    const transactionDateTime = new Date(`${transactionDate}T${time}`);
 
     const printWindow = window.open('', '_blank');
     if (printWindow) {
@@ -171,13 +175,21 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
             <div className="lg:col-span-1 bg-white p-6 rounded-xl shadow-md space-y-4 h-fit">
                 <h2 className="text-xl font-semibold text-gray-700">Add Item</h2>
                  <div className="flex gap-4">
-                    <div className="flex-1">
+                    <div className="w-2/3">
                         <label htmlFor="transactionDate" className="block text-sm font-medium text-gray-700">Date</label>
                         <input type="date" id="transactionDate" value={transactionDate} onChange={e => setTransactionDate(e.target.value)} className="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-brand-orange focus:border-brand-orange" />
                     </div>
-                    <div className="flex-1">
-                        <label htmlFor="transactionTime" className="block text-sm font-medium text-gray-700">Time</label>
-                        <input type="time" id="transactionTime" value={transactionTime} onChange={e => setTransactionTime(e.target.value)} className="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-brand-orange focus:border-brand-orange" />
+                    <div className="w-1/3">
+                        <label htmlFor="timePeriod" className="block text-sm font-medium text-gray-700">Period</label>
+                        <select 
+                            id="timePeriod" 
+                            value={timePeriod} 
+                            onChange={e => setTimePeriod(e.target.value as 'AM' | 'PM')}
+                            className="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-brand-orange focus:border-brand-orange h-[42px]"
+                        >
+                            <option value="AM">AM</option>
+                            <option value="PM">PM</option>
+                        </select>
                     </div>
                 </div>
                  <div>
