@@ -3,7 +3,12 @@ import autoTable from 'jspdf-autotable';
 import { Transaction } from '../types';
 
 // FIX: Added 'admin' to the report type union to allow generating a full report from the admin dashboard.
-export const generateReportPDF = (type: 'daily' | 'monthly' | 'material' | 'admin', transactions: Transaction[], balances?: { opening: number, closing: number }) => {
+export const generateReportPDF = (
+  type: 'daily' | 'monthly' | 'material' | 'admin', 
+  transactions: Transaction[], 
+  balances?: { opening: number, closing: number },
+  filterTitle?: string
+) => {
   let filteredTransactions: Transaction[] = [];
   const today = new Date();
 
@@ -26,13 +31,20 @@ export const generateReportPDF = (type: 'daily' | 'monthly' | 'material' | 'admi
   
   const doc = new jsPDF();
   
+  const reportTitle = `Umvuzo ${type.charAt(0).toUpperCase() + type.slice(1)} Report`;
   doc.setFontSize(18);
-  doc.text(`Umvuzo ${type.charAt(0).toUpperCase() + type.slice(1)} Report`, 14, 22);
+  doc.text(reportTitle, 14, 22);
   doc.setFontSize(11);
   doc.setTextColor(100);
-  doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 29);
 
-  const tableColumn = ["Date", "Rep", "Client", "Material", "Kg", "Rate", "Total"];
+  let subTitleY = 29;
+  if (filterTitle && filterTitle !== 'All') {
+      doc.text(`Rate Sheet: ${filterTitle}`, 14, subTitleY);
+      subTitleY += 7;
+  }
+  doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, subTitleY);
+
+  const tableColumn = ["Date", "Rep", "Client", "Material", "Rate Sheet", "Kg", "Rate", "Total"];
   const tableRows: (string | number)[][] = [];
   let totalPaid = 0;
   let totalKg = 0;
@@ -50,6 +62,7 @@ export const generateReportPDF = (type: 'daily' | 'monthly' | 'material' | 'admi
       tx.repName,
       tx.clientName,
       tx.material,
+      tx.rateSheet,
       tx.weight.toFixed(2),
       `R ${tx.pricePerKg.toFixed(2)}`,
       `R ${tx.total.toFixed(2)}`
@@ -61,7 +74,7 @@ export const generateReportPDF = (type: 'daily' | 'monthly' | 'material' | 'admi
   autoTable(doc, {
     head: [tableColumn],
     body: tableRows,
-    startY: 35,
+    startY: subTitleY + 6,
     theme: 'grid',
     headStyles: { fillColor: '#0b6000' },
   });

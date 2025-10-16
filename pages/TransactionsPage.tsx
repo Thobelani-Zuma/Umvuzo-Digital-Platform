@@ -54,6 +54,7 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
       weight: weightValue,
       pricePerKg: materialInfo.price,
       total: weightValue * materialInfo.price,
+      rateSheet: rateSheetKey,
     };
 
     setItems([...items, newItem]);
