@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { TransactionData } from '../types';
-import { PayoutIcon, WeightIcon, UsersIcon, SearchIcon, ReportIcon, CashIcon, EmailIcon, WhatsAppIcon } from '../components/icons/Icons';
+import { Transaction, TransactionData } from '../types';
+import { PayoutIcon, WeightIcon, UsersIcon, SearchIcon, ReportIcon, CashIcon, ShareIcon } from '../components/icons/Icons';
 import { generateReportPDF } from '../services/reportService';
 import { db } from '../services/firebase';
 import { RATE_SHEETS } from '../constants';
@@ -24,22 +24,50 @@ export function AdminDashboardPage({ allTransactions }: { allTransactions: Trans
   const [openingBalance, setOpeningBalance] = useState('');
   const [balanceMessage, setBalanceMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [selectedRateSheet, setSelectedRateSheet] = useState('All');
+  const [isSharing, setIsSharing] = useState<'weekly' | 'admin' | null>(null);
 
   useEffect(() => {
-    const fetchBalances = async () => {
+    const setupBalances = async () => {
       const todayStr = new Date().toISOString().split('T')[0];
       const balanceDocRef = db.collection('dailyBalances').doc(todayStr);
+
       try {
         const docSnap = await balanceDocRef.get();
         if (docSnap.exists) {
+          // Balance for today already exists, just load it.
           const data = docSnap.data()!;
-          setOpeningBalance(data.openingBalance?.toString() || '');
+          setOpeningBalance(data.openingBalance?.toString() || '0');
+        } else {
+          // No balance for today, find the most recent closing balance.
+          const balancesQuery = db.collection('dailyBalances')
+            .orderBy('date', 'desc')
+            .limit(1);
+          
+          const querySnapshot = await balancesQuery.get();
+          
+          let newOpeningBalance = 0;
+          if (!querySnapshot.empty) {
+            const lastBalanceDoc = querySnapshot.docs[0].data();
+            // Use closingBalance from the most recent document as the new opening balance
+            newOpeningBalance = lastBalanceDoc.closingBalance || 0;
+          }
+          
+          // Set the opening balance in state and save it for today to create the document
+          setOpeningBalance(newOpeningBalance.toString());
+          await balanceDocRef.set({
+            openingBalance: newOpeningBalance,
+            date: todayStr,
+          }, { merge: true });
+
+          setBalanceMessage({ text: `Opening balance carried over from previous day.`, type: 'success' });
+          setTimeout(() => setBalanceMessage(null), 4000);
         }
       } catch (error) {
-        console.error("Error fetching balances:", error);
+        console.error("Error setting up balances:", error);
+        setBalanceMessage({ text: 'Could not auto-fill opening balance.', type: 'error' });
       }
     };
-    fetchBalances();
+    setupBalances();
   }, []);
 
   const pageTransactions = useMemo(() => {
@@ -67,7 +95,8 @@ export function AdminDashboardPage({ allTransactions }: { allTransactions: Trans
         return acc;
     }, {} as TransactionData);
 
-    const performance = Object.entries(groupedByEmail).map(([email, txs]) => {
+    // FIX: Explicitly type the destructured arguments from Object.entries to resolve 'unknown' type inference for 'txs'.
+    const performance = Object.entries(groupedByEmail).map(([email, txs]: [string, Transaction[]]) => {
         const repName = txs.length > 0 ? txs[0].repName : email.split('@')[0].replace(/\./g, ' ').replace(/(^\w|\s\w)/g, m => m.toUpperCase());
         const totalWeight = txs.reduce((sum, tx) => sum + tx.weight, 0);
         return { name: repName, kg: parseFloat(totalWeight.toFixed(2)) };
@@ -95,7 +124,7 @@ export function AdminDashboardPage({ allTransactions }: { allTransactions: Trans
 
   const calculatedClosingBalance = parseFloat(openingBalance || '0') - todaysPayout;
 
-  const handleSaveBalances = async () => {
+  const handleUpdateOpeningBalance = async () => {
     setBalanceMessage(null);
     const todayStr = new Date().toISOString().split('T')[0];
     const ob = parseFloat(openingBalance);
@@ -115,11 +144,11 @@ export function AdminDashboardPage({ allTransactions }: { allTransactions: Trans
         closingBalance: finalClosingBalance,
         date: todayStr 
       }, { merge: true });
-      setBalanceMessage({ text: 'Opening Balance saved successfully!', type: 'success' });
+      setBalanceMessage({ text: 'Opening Balance updated successfully!', type: 'success' });
       setTimeout(() => setBalanceMessage(null), 3000);
     } catch (error) {
-      console.error("Error saving balances: ", error);
-      setBalanceMessage({ text: 'Failed to save balance. Check console for details.', type: 'error' });
+      console.error("Error updating balance: ", error);
+      setBalanceMessage({ text: 'Failed to update balance. Check console for details.', type: 'error' });
       setTimeout(() => setBalanceMessage(null), 5000);
     }
   };
@@ -140,29 +169,52 @@ export function AdminDashboardPage({ allTransactions }: { allTransactions: Trans
     return filteredTransactions.reduce((sum, tx) => sum + tx.total, 0);
   }, [filteredTransactions]);
 
-  const handleDownloadReport = () => {
-    generateReportPDF('admin', filteredTransactions, {
+  const handleDownloadReport = (type: 'admin' | 'weekly') => {
+    const transactionsToDownload = type === 'weekly' ? pageTransactions : filteredTransactions;
+    generateReportPDF(type, transactionsToDownload, {
         opening: parseFloat(openingBalance || '0'),
         closing: calculatedClosingBalance,
-    }, selectedRateSheet);
+    }, selectedRateSheet, 'download');
   };
   
-  const handleDownloadWeeklyReport = () => {
-      generateReportPDF('weekly', pageTransactions, {
-          opening: parseFloat(openingBalance || '0'),
-          closing: calculatedClosingBalance,
-      }, selectedRateSheet);
-  };
-  
-  const handleShare = (platform: 'email' | 'whatsapp') => {
-    const subject = "Umvuzo Admin Report";
-    const emailBody = "Hi,\n\nPlease see the attached Umvuzo report.\n\n(This email was pre-filled. Please download the desired report from the admin panel and attach it to this email).\n\nSent from the Umvuzo Digital Platform.";
-    const whatsappText = "Hi, I'm sharing an Umvuzo admin report with you. I will send the PDF file next. (Sent from the Umvuzo Digital Platform)";
+  const handleShareReport = async (type: 'weekly' | 'admin') => {
+    setIsSharing(type);
+    const transactionsToShare = type === 'weekly' ? pageTransactions : filteredTransactions;
+    try {
+      const pdfBlob = generateReportPDF(
+          type,
+          transactionsToShare,
+          {
+              opening: parseFloat(openingBalance || '0'),
+              closing: calculatedClosingBalance,
+          },
+          selectedRateSheet,
+          'blob'
+      );
+      if (!pdfBlob || pdfBlob.size === 0) {
+        return;
+      }
 
-    if (platform === 'email') {
-        window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(emailBody)}`;
-    } else {
-        window.open(`https://wa.me/?text=${encodeURIComponent(whatsappText)}`, '_blank');
+      const reportFile = new File([pdfBlob], `admin_${type}_report.pdf`, { type: 'application/pdf' });
+      
+      const shareData = {
+          title: `Umvuzo Admin ${type} Report`,
+          text: `Here is the Umvuzo Admin ${type} report.`,
+          files: [reportFile],
+      };
+
+      if (navigator.share && navigator.canShare({ files: [reportFile] })) {
+          await navigator.share(shareData);
+      } else {
+          alert("Your browser doesn't support sharing files directly. Please download the report and share it manually.");
+      }
+    } catch (err) {
+      if ((err as DOMException).name !== 'AbortError') {
+          console.error("Share failed:", err);
+          alert("Sharing failed. Please try again or share the downloaded file manually.");
+      }
+    } finally {
+      setIsSharing(null);
     }
   };
 
@@ -184,32 +236,34 @@ export function AdminDashboardPage({ allTransactions }: { allTransactions: Trans
               ))}
             </select>
             <button
-              onClick={handleDownloadWeeklyReport}
+              onClick={() => handleDownloadReport('weekly')}
               className="flex items-center justify-center gap-2 py-2 px-4 font-semibold text-white bg-brand-green rounded-lg shadow-md hover:opacity-90"
             >
               <ReportIcon className="h-5 w-5" />
               Download Weekly
             </button>
             <button
-              onClick={handleDownloadReport}
+              onClick={() => handleShareReport('weekly')}
+              disabled={isSharing === 'weekly'}
+              className="flex items-center justify-center gap-2 py-2 px-4 font-semibold text-white bg-gray-600 rounded-lg shadow-md hover:bg-gray-700 disabled:bg-gray-400"
+            >
+              <ShareIcon className="h-5 w-5" />
+              {isSharing === 'weekly' ? '...' : 'Share Weekly'}
+            </button>
+            <button
+              onClick={() => handleDownloadReport('admin')}
               className="flex items-center justify-center gap-2 py-2 px-4 font-semibold text-white bg-brand-orange rounded-lg shadow-md hover:opacity-90"
             >
               <ReportIcon className="h-5 w-5" />
               Download Full
             </button>
             <button
-              onClick={() => handleShare('email')}
-              className="flex items-center justify-center gap-2 py-2 px-4 font-semibold text-white bg-gray-700 rounded-lg shadow-md hover:bg-gray-800"
+              onClick={() => handleShareReport('admin')}
+              disabled={isSharing === 'admin'}
+              className="flex items-center justify-center gap-2 py-2 px-4 font-semibold text-white bg-gray-600 rounded-lg shadow-md hover:bg-gray-700 disabled:bg-gray-400"
             >
-              <EmailIcon className="h-5 w-5" />
-              Email
-            </button>
-            <button
-              onClick={() => handleShare('whatsapp')}
-              className="flex items-center justify-center gap-2 py-2 px-4 font-semibold text-white bg-green-600 rounded-lg shadow-md hover:bg-green-700"
-            >
-              <WhatsAppIcon className="h-5 w-5" />
-              WhatsApp
+              <ShareIcon className="h-5 w-5" />
+              {isSharing === 'admin' ? '...' : 'Share Full'}
             </button>
         </div>
       </div>
@@ -246,8 +300,8 @@ export function AdminDashboardPage({ allTransactions }: { allTransactions: Trans
                     <input id="opening-balance" type="number" step="0.01" value={openingBalance} onChange={e => setOpeningBalance(e.target.value)} placeholder="0.00" className="mt-1 w-full p-2 border border-gray-300 rounded-md focus:ring-brand-orange focus:border-brand-orange" />
                 </div>
             </div>
-            <button onClick={handleSaveBalances} className="w-full py-2 px-4 font-semibold text-white bg-brand-green rounded-lg shadow-sm hover:opacity-90">
-                Save Opening Balance
+            <button onClick={handleUpdateOpeningBalance} className="w-full py-2 px-4 font-semibold text-white bg-brand-green rounded-lg shadow-sm hover:opacity-90">
+                Update Opening Balance
             </button>
             {balanceMessage && (
               <p className={`text-center text-sm font-medium ${balanceMessage.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>

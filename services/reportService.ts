@@ -3,12 +3,14 @@ import autoTable from 'jspdf-autotable';
 import { Transaction } from '../types';
 
 // FIX: Added 'admin' and 'weekly' to the report type union to allow for more report variations.
+// FIX: Added outputType parameter to allow returning a Blob instead of downloading.
 export const generateReportPDF = (
   type: 'daily' | 'monthly' | 'material' | 'admin' | 'weekly', 
   transactions: Transaction[], 
   balances?: { opening: number, closing: number },
-  filterTitle?: string
-) => {
+  filterTitle?: string,
+  outputType: 'download' | 'blob' = 'download'
+): Blob | void => {
   let filteredTransactions: Transaction[] = [];
   const today = new Date();
 
@@ -40,6 +42,7 @@ export const generateReportPDF = (
 
   if (filteredTransactions.length === 0) {
     alert("No data available for the selected report type.");
+    if (outputType === 'blob') return new Blob(); // Return empty blob to avoid breaking share logic
     return;
   }
   
@@ -110,5 +113,9 @@ export const generateReportPDF = (
       doc.text(`Total Kg: ${totalKg.toFixed(2)} kg`, 14, finalY + 22);
   }
   
-  doc.save(`${type}_report_${new Date().toISOString().split('T')[0]}.pdf`);
+  if (outputType === 'blob') {
+    return doc.output('blob');
+  } else {
+    doc.save(`${type}_report_${new Date().toISOString().split('T')[0]}.pdf`);
+  }
 };

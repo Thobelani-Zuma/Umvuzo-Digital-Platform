@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Transaction } from '../types';
 import { generateReportPDF } from '../services/reportService';
-import { ReportIcon, EmailIcon, WhatsAppIcon } from '../components/icons/Icons';
+import { ReportIcon, ShareIcon } from '../components/icons/Icons';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { RATE_SHEETS } from '../constants';
 
@@ -9,8 +9,18 @@ interface ReportsPageProps {
   transactions: Transaction[];
 }
 
+const reportTypes = [
+    { key: 'daily', label: 'Daily Report' },
+    { key: 'weekly', label: 'Weekly Report' },
+    { key: 'monthly', label: 'Monthly Report' },
+    { key: 'material', label: 'Full Material Report' },
+] as const;
+
+type ReportType = typeof reportTypes[number]['key'];
+
 export function ReportsPage({ transactions }: ReportsPageProps) {
   const [selectedRateSheet, setSelectedRateSheet] = useState('All');
+  const [isSharing, setIsSharing] = useState<ReportType | null>(null);
 
   const filteredTransactions = useMemo(() => {
     if (selectedRateSheet === 'All') {
@@ -19,29 +29,53 @@ export function ReportsPage({ transactions }: ReportsPageProps) {
     return transactions.filter(tx => tx.rateSheet === selectedRateSheet);
   }, [transactions, selectedRateSheet]);
 
-  const handleGenerateReport = (type: 'daily' | 'weekly' | 'monthly' | 'material') => {
-    generateReportPDF(type, filteredTransactions, undefined, selectedRateSheet);
+  const handleGenerateReport = (type: ReportType) => {
+    generateReportPDF(type, filteredTransactions, undefined, selectedRateSheet, 'download');
   };
   
-  const handleShare = (platform: 'email' | 'whatsapp') => {
-    const subject = "Umvuzo Report";
-    const emailBody = "Hi,\n\nPlease see the attached Umvuzo report.\n\n(This email was pre-filled. Please attach the PDF report you downloaded from the app).\n\nSent from the Umvuzo Digital Platform.";
-    const whatsappText = "Hi, I'm sharing an Umvuzo report with you. I will send the PDF file next. (Sent from the Umvuzo Digital Platform)";
+  const handleShareReport = async (type: ReportType) => {
+    setIsSharing(type);
+    try {
+      const pdfBlob = generateReportPDF(type, filteredTransactions, undefined, selectedRateSheet, 'blob');
+      
+      if (!pdfBlob || pdfBlob.size === 0) {
+        // generateReportPDF shows an alert if there's no data.
+        return;
+      }
 
-    if (platform === 'email') {
-        window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(emailBody)}`;
-    } else {
-        window.open(`https://wa.me/?text=${encodeURIComponent(whatsappText)}`, '_blank');
+      const reportFile = new File([pdfBlob], `${type}_report.pdf`, { type: 'application/pdf' });
+      
+      const shareData = {
+          title: `Umvuzo ${type} Report`,
+          text: `Here is the Umvuzo ${type} report.`,
+          files: [reportFile],
+      };
+
+      if (navigator.share && navigator.canShare({ files: [reportFile] })) {
+          await navigator.share(shareData);
+      } else {
+          alert("Your browser doesn't support sharing files directly. Please download the report and share it manually.");
+      }
+    } catch (err) {
+      // Don't show an alert if the user cancels the share dialog
+      if ((err as DOMException).name !== 'AbortError') {
+          console.error("Share failed:", err);
+          alert("Sharing failed. Please try again or share the downloaded file manually.");
+      }
+    } finally {
+      setIsSharing(null);
     }
   };
+
 
   const materialTotals = filteredTransactions.reduce((acc, tx) => {
     acc[tx.material] = (acc[tx.material] || 0) + tx.weight;
     return acc;
   }, {} as { [key: string]: number });
   
+  // FIX: Explicitly type the destructured arguments from Object.entries to resolve 'unknown' type inference.
   const chartData = Object.entries(materialTotals)
-    .map(([name, kg]) => ({ name, kg: parseFloat(kg.toFixed(2)) }))
+    .map(([name, kg]: [string, number]) => ({ name, kg: parseFloat(kg.toFixed(2)) }))
     .sort((a,b) => b.kg - a.kg);
 
 
@@ -79,52 +113,33 @@ export function ReportsPage({ transactions }: ReportsPageProps) {
         </div>
       </div>
       
-      <div className="max-w-md mx-auto bg-white p-8 rounded-xl shadow-md">
-        <h2 className="text-xl font-semibold text-gray-700 mb-4 text-center">Download Reports</h2>
-        <div className="space-y-4">
-          <button
-            onClick={() => handleGenerateReport('daily')}
-            className="w-full flex items-center justify-center gap-3 py-4 px-4 text-lg font-semibold text-white bg-brand-orange rounded-lg shadow-md hover:opacity-90 transition-transform transform hover:scale-105"
-          >
-            <ReportIcon className="h-6 w-6" />
-            Download Daily Report
-          </button>
-          <button
-            onClick={() => handleGenerateReport('weekly')}
-            className="w-full flex items-center justify-center gap-3 py-4 px-4 text-lg font-semibold text-white bg-brand-orange rounded-lg shadow-md hover:opacity-90 transition-transform transform hover:scale-105"
-          >
-            <ReportIcon className="h-6 w-6" />
-            Download Weekly Report
-          </button>
-          <button
-            onClick={() => handleGenerateReport('monthly')}
-            className="w-full flex items-center justify-center gap-3 py-4 px-4 text-lg font-semibold text-white bg-brand-orange rounded-lg shadow-md hover:opacity-90 transition-transform transform hover:scale-105"
-          >
-            <ReportIcon className="h-6 w-6" />
-            Download Monthly Report
-          </button>
-          <button
-            onClick={() => handleGenerateReport('material')}
-            className="w-full flex items-center justify-center gap-3 py-4 px-4 text-lg font-semibold text-white bg-brand-orange rounded-lg shadow-md hover:opacity-90 transition-transform transform hover:scale-105"
-          >
-            <ReportIcon className="h-6 w-6" />
-            Download Full Material Report
-          </button>
-        </div>
-        
-        <div className="mt-6 pt-6 border-t">
-          <h3 className="text-lg font-semibold text-gray-700 mb-3 text-center">Share Report</h3>
-          <p className="text-center text-sm text-gray-500 mb-4">First, download a report, then use an option below to share the file.</p>
-          <div className="flex justify-center gap-4">
-              <button onClick={() => handleShare('email')} className="flex items-center gap-2 py-2 px-4 rounded-lg bg-gray-700 text-white hover:bg-gray-800 transition-colors">
-                  <EmailIcon className="h-5 w-5" />
-                  Email
-              </button>
-              <button onClick={() => handleShare('whatsapp')} className="flex items-center gap-2 py-2 px-4 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors">
-                  <WhatsAppIcon className="h-5 w-5" />
-                  WhatsApp
-              </button>
-          </div>
+      <div className="max-w-xl mx-auto bg-white p-8 rounded-xl shadow-md">
+        <h2 className="text-xl font-semibold text-gray-700 mb-4 text-center">Generate & Share Reports</h2>
+        <div className="space-y-3">
+          {reportTypes.map(({ key, label }) => (
+            <div key={key} className="bg-gray-50 p-3 rounded-lg flex flex-col sm:flex-row justify-between items-center gap-3">
+              <div className="flex items-center gap-3">
+                <ReportIcon className="h-6 w-6 text-brand-green" />
+                <span className="font-semibold text-gray-800">{label}</span>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => handleGenerateReport(key)}
+                  className="py-2 px-4 text-sm font-semibold text-brand-orange border-2 border-brand-orange rounded-lg hover:bg-orange-50 transition-colors"
+                >
+                  Download
+                </button>
+                <button
+                  onClick={() => handleShareReport(key)}
+                  disabled={isSharing === key}
+                  className="flex items-center gap-2 py-2 px-4 text-sm font-semibold text-white bg-gray-700 rounded-lg hover:bg-gray-800 transition-colors disabled:bg-gray-400"
+                >
+                  <ShareIcon className="h-5 w-5" />
+                  {isSharing === key ? 'Preparing...' : 'Share'}
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>
