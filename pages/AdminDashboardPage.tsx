@@ -4,6 +4,7 @@ import { TransactionData } from '../types';
 import { PayoutIcon, WeightIcon, UsersIcon, SearchIcon, ReportIcon, CashIcon } from '../components/icons/Icons';
 import { generateReportPDF } from '../services/reportService';
 import { db } from '../services/firebase';
+import { RATE_SHEETS } from '../constants';
 
 
 const StatCard = ({ icon, title, value, color }: { icon: React.ReactNode, title: string, value: string, color: string }) => (
@@ -22,6 +23,7 @@ export function AdminDashboardPage({ allTransactions }: { allTransactions: Trans
   const [searchTerm, setSearchTerm] = useState('');
   const [openingBalance, setOpeningBalance] = useState('');
   const [balanceMessage, setBalanceMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [selectedRateSheet, setSelectedRateSheet] = useState('All');
 
   useEffect(() => {
     const fetchBalances = async () => {
@@ -40,15 +42,32 @@ export function AdminDashboardPage({ allTransactions }: { allTransactions: Trans
     fetchBalances();
   }, []);
 
-  const { flatTransactions, totalPayout, totalWeight, repCount, repPerformanceData, todaysPayout } = useMemo(() => {
+  const pageTransactions = useMemo(() => {
     const allTxs = Object.values(allTransactions).flat();
+    if (selectedRateSheet === 'All') {
+      return allTxs;
+    }
+    return allTxs.filter(tx => tx.rateSheet === selectedRateSheet);
+  }, [allTransactions, selectedRateSheet]);
+
+  const { totalPayout, totalWeight, repCount, repPerformanceData, todaysPayout } = useMemo(() => {
+    const allTxs = pageTransactions;
     
     const payout = allTxs.reduce((sum, tx) => sum + tx.total, 0);
     const weight = allTxs.reduce((sum, tx) => sum + tx.weight, 0);
     
     const reps = new Set(allTxs.map(tx => tx.repName));
     
-    const performance = Object.entries(allTransactions).map(([email, txs]) => {
+    const groupedByEmail = allTxs.reduce((acc, tx) => {
+        const email = tx.userEmail || 'unknown';
+        if (!acc[email]) {
+            acc[email] = [];
+        }
+        acc[email].push(tx);
+        return acc;
+    }, {} as TransactionData);
+
+    const performance = Object.entries(groupedByEmail).map(([email, txs]) => {
         const repName = txs.length > 0 ? txs[0].repName : email.split('@')[0].replace(/\./g, ' ').replace(/(^\w|\s\w)/g, m => m.toUpperCase());
         const totalWeight = txs.reduce((sum, tx) => sum + tx.weight, 0);
         return { name: repName, kg: parseFloat(totalWeight.toFixed(2)) };
@@ -66,14 +85,13 @@ export function AdminDashboardPage({ allTransactions }: { allTransactions: Trans
     const dailyPayout = todaysTxs.reduce((sum, tx) => sum + tx.total, 0);
 
     return {
-      flatTransactions: allTxs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
       totalPayout: payout,
       totalWeight: weight,
       repCount: reps.size,
       repPerformanceData: performance,
       todaysPayout: dailyPayout,
     };
-  }, [allTransactions]);
+  }, [pageTransactions]);
 
   const calculatedClosingBalance = parseFloat(openingBalance || '0') - todaysPayout;
 
@@ -88,7 +106,6 @@ export function AdminDashboardPage({ allTransactions }: { allTransactions: Trans
       return;
     }
 
-    // FIX: Recalculate closing balance inside the handler to ensure it uses the latest values.
     const finalClosingBalance = ob - todaysPayout;
 
     const balanceDocRef = db.collection('dailyBalances').doc(todayStr);
@@ -108,41 +125,55 @@ export function AdminDashboardPage({ allTransactions }: { allTransactions: Trans
   };
 
   const filteredTransactions = useMemo(() => {
-    if (!searchTerm) return flatTransactions;
+    const sortedTransactions = pageTransactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    if (!searchTerm) return sortedTransactions;
+    
     const lowercasedFilter = searchTerm.toLowerCase();
-    return flatTransactions.filter(tx =>
+    return sortedTransactions.filter(tx =>
       tx.repName.toLowerCase().includes(lowercasedFilter) ||
       tx.clientName.toLowerCase().includes(lowercasedFilter) ||
       tx.material.toLowerCase().includes(lowercasedFilter)
     );
-  }, [flatTransactions, searchTerm]);
+  }, [pageTransactions, searchTerm]);
   
   const filteredTotal = useMemo(() => {
     return filteredTransactions.reduce((sum, tx) => sum + tx.total, 0);
   }, [filteredTransactions]);
 
   const handleDownloadReport = () => {
-    const allTxs = Object.values(allTransactions).flat();
-    generateReportPDF('admin', allTxs, {
+    generateReportPDF('admin', filteredTransactions, {
         opening: parseFloat(openingBalance || '0'),
         closing: calculatedClosingBalance,
-    });
+    }, selectedRateSheet);
   };
 
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-800">Admin Dashboard</h1>
-         <button
-            onClick={handleDownloadReport}
-            className="flex items-center justify-center gap-2 py-2 px-4 font-semibold text-white bg-brand-orange rounded-lg shadow-md hover:opacity-90"
-          >
-            <ReportIcon className="h-5 w-5" />
-            Download Full Report
-          </button>
+         <div className="flex items-center gap-4">
+            <select
+              id="admin-rate-sheet-filter"
+              value={selectedRateSheet}
+              onChange={(e) => setSelectedRateSheet(e.target.value)}
+              className="py-2 px-4 border rounded-lg focus:ring-brand-orange focus:border-brand-orange bg-white shadow-sm"
+            >
+              <option value="All">All Rate Sheets</option>
+              {Object.keys(RATE_SHEETS).map(sheet => (
+                <option key={sheet} value={sheet}>{sheet}</option>
+              ))}
+            </select>
+            <button
+              onClick={handleDownloadReport}
+              className="flex items-center justify-center gap-2 py-2 px-4 font-semibold text-white bg-brand-orange rounded-lg shadow-md hover:opacity-90"
+            >
+              <ReportIcon className="h-5 w-5" />
+              Download Filtered Report
+            </button>
+        </div>
       </div>
       
-      <h2 className="text-xl font-semibold text-gray-700 mb-4">Lifetime Stats</h2>
+      <h2 className="text-xl font-semibold text-gray-700 mb-4">Filtered Stats</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         <StatCard 
             icon={<UsersIcon className="h-8 w-8 text-white"/>} 
