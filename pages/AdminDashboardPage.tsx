@@ -88,11 +88,14 @@ export function AdminDashboardPage({ allTransactions }: { allTransactions: Trans
       return;
     }
 
+    // FIX: Recalculate closing balance inside the handler to ensure it uses the latest values.
+    const finalClosingBalance = ob - todaysPayout;
+
     const balanceDocRef = db.collection('dailyBalances').doc(todayStr);
     try {
       await balanceDocRef.set({ 
         openingBalance: ob, 
-        closingBalance: calculatedClosingBalance,
+        closingBalance: finalClosingBalance,
         date: todayStr 
       }, { merge: true });
       setBalanceMessage({ text: 'Opening Balance saved successfully!', type: 'success' });
