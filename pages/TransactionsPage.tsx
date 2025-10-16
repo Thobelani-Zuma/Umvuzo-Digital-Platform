@@ -181,7 +181,7 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
         <div className="bg-white p-8 rounded-xl shadow-md space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Rep Name</label>
+                <label className="block text-sm font-medium text-gray-700">Rep Full Name</label>
                 <input type="text" value={repName} readOnly className="mt-1 w-full p-2 bg-gray-200 border border-gray-300 rounded-md cursor-not-allowed" />
               </div>
               <div>
