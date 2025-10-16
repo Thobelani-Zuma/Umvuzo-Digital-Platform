@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Transaction } from '../types';
 import { RATE_SHEETS } from '../constants';
-import { PlusIcon, TrashIcon } from '../components/icons/Icons';
+import { PlusIcon, TrashIcon, PrintIcon } from '../components/icons/Icons';
 
 interface TransactionsPageProps {
   repName: string;
@@ -104,6 +104,75 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
     }
   };
 
+  const handlePrintReceipt = () => {
+    if (!clientName.trim() || items.length === 0) {
+        alert("Please enter a client name and add at least one item before printing.");
+        return;
+    }
+
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+        const receiptHTML = `
+            <html>
+                <head>
+                    <title>Transaction Receipt</title>
+                    <style>
+                        body { font-family: sans-serif; margin: 20px; }
+                        .header { text-align: center; margin-bottom: 20px; border-bottom: 1px solid #ccc; padding-bottom: 10px;}
+                        .header h1 { margin: 0; }
+                        .info { margin-bottom: 20px; }
+                        .info p { margin: 5px 0; }
+                        table { width: 100%; border-collapse: collapse; }
+                        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                        th { background-color: #f2f2f2; }
+                        .total { margin-top: 20px; text-align: right; font-size: 1.2em; font-weight: bold; }
+                        .footer { margin-top: 30px; text-align: center; font-size: 0.8em; color: #888; }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <h1>Umvuzo Transaction Receipt</h1>
+                    </div>
+                    <div class="info">
+                        <p><strong>Date & Time:</strong> ${new Date().toLocaleString('en-ZA')}</p>
+                        <p><strong>Rep Name:</strong> ${repName}</p>
+                        <p><strong>Client Name:</strong> ${clientName}</p>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Material</th>
+                                <th>Weight (kg)</th>
+                                <th>Rate (R/kg)</th>
+                                <th>Total (R)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${items.map(item => `
+                                <tr>
+                                    <td>${item.material}</td>
+                                    <td>${item.weight.toFixed(2)}</td>
+                                    <td>R ${item.pricePerKg.toFixed(2)}</td>
+                                    <td>R ${item.total.toFixed(2)}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                    <div class="total">
+                        <p>Grand Total: R ${grandTotal.toFixed(2)}</p>
+                    </div>
+                    <div class="footer">
+                        <p>Umvuzo is powered by Isphepho.</p>
+                    </div>
+                </body>
+            </html>
+        `;
+        printWindow.document.write(receiptHTML);
+        printWindow.document.close();
+        printWindow.print();
+    }
+  };
+
 
   return (
     <div>
@@ -199,13 +268,23 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
               </p>
             )}
 
-            <button
-              onClick={handleSaveAll}
-              disabled={isSubmitting || items.length === 0}
-              className="mt-4 w-full py-4 text-lg font-semibold text-white bg-slate-600 rounded-lg shadow-md hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 disabled:bg-gray-400 disabled:cursor-not-allowed"
-            >
-              {isSubmitting ? 'Saving...' : `Complete & Save All (${items.length})`}
-            </button>
+            <div className="mt-4 space-y-2">
+                <button
+                  onClick={handleSaveAll}
+                  disabled={isSubmitting || items.length === 0}
+                  className="w-full py-4 text-lg font-semibold text-white bg-slate-600 rounded-lg shadow-md hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                >
+                  {isSubmitting ? 'Saving...' : `Complete & Save All (${items.length})`}
+                </button>
+                <button
+                  onClick={handlePrintReceipt}
+                  disabled={items.length === 0}
+                  className="w-full flex items-center justify-center gap-2 py-3 px-4 font-semibold text-brand-green border-2 border-brand-green rounded-lg hover:bg-green-50 transition-colors disabled:border-gray-300 disabled:text-gray-400 disabled:bg-gray-50"
+                >
+                    <PrintIcon className="h-5 w-5" />
+                    Print Receipt
+                </button>
+            </div>
         </div>
       </div>
     </div>
