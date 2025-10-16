@@ -188,7 +188,7 @@ export function AdminDashboardPage({ allTransactions }: { allTransactions: Trans
                 />
                 <StatCard 
                     icon={<CashIcon className="h-8 w-8 text-white"/>}
-                    title="Auto-Calculated Closing Balance"
+                    title="Current Day's Balance"
                     value={`R ${calculatedClosingBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                     color="bg-blue-500"
                 />
