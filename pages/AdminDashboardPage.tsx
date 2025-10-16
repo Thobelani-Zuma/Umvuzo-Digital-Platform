@@ -146,12 +146,19 @@ export function AdminDashboardPage({ allTransactions }: { allTransactions: Trans
         closing: calculatedClosingBalance,
     }, selectedRateSheet);
   };
+  
+  const handleDownloadWeeklyReport = () => {
+      generateReportPDF('weekly', pageTransactions, {
+          opening: parseFloat(openingBalance || '0'),
+          closing: calculatedClosingBalance,
+      }, selectedRateSheet);
+  };
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-wrap justify-between items-center mb-6 gap-4">
         <h1 className="text-3xl font-bold text-gray-800">Admin Dashboard</h1>
-         <div className="flex items-center gap-4">
+         <div className="flex items-center flex-wrap gap-4">
             <select
               id="admin-rate-sheet-filter"
               value={selectedRateSheet}
@@ -164,11 +171,18 @@ export function AdminDashboardPage({ allTransactions }: { allTransactions: Trans
               ))}
             </select>
             <button
+              onClick={handleDownloadWeeklyReport}
+              className="flex items-center justify-center gap-2 py-2 px-4 font-semibold text-white bg-brand-green rounded-lg shadow-md hover:opacity-90"
+            >
+              <ReportIcon className="h-5 w-5" />
+              Download Weekly Report
+            </button>
+            <button
               onClick={handleDownloadReport}
               className="flex items-center justify-center gap-2 py-2 px-4 font-semibold text-white bg-brand-orange rounded-lg shadow-md hover:opacity-90"
             >
               <ReportIcon className="h-5 w-5" />
-              Download Filtered Report
+              Download Full Report
             </button>
         </div>
       </div>

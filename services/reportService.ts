@@ -2,9 +2,9 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Transaction } from '../types';
 
-// FIX: Added 'admin' to the report type union to allow generating a full report from the admin dashboard.
+// FIX: Added 'admin' and 'weekly' to the report type union to allow for more report variations.
 export const generateReportPDF = (
-  type: 'daily' | 'monthly' | 'material' | 'admin', 
+  type: 'daily' | 'monthly' | 'material' | 'admin' | 'weekly', 
   transactions: Transaction[], 
   balances?: { opening: number, closing: number },
   filterTitle?: string
@@ -16,6 +16,20 @@ export const generateReportPDF = (
     const startOfDay = new Date(today.setHours(0, 0, 0, 0)).toISOString();
     const endOfDay = new Date(today.setHours(23, 59, 59, 999)).toISOString();
     filteredTransactions = transactions.filter(tx => tx.date >= startOfDay && tx.date <= endOfDay);
+  } else if (type === 'weekly') {
+    const dayOfWeek = today.getDay(); // Sunday = 0, Monday = 1, etc.
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - dayOfWeek);
+    startOfWeek.setHours(0, 0, 0, 0);
+
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6);
+    endOfWeek.setHours(23, 59, 59, 999);
+    
+    filteredTransactions = transactions.filter(tx => {
+        const txDate = new Date(tx.date);
+        return txDate >= startOfWeek && txDate <= endOfWeek;
+    });
   } else if (type === 'monthly') {
     const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1).toISOString();
     const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59, 999).toISOString();

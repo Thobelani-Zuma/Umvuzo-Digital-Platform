@@ -19,7 +19,7 @@ export function ReportsPage({ transactions }: ReportsPageProps) {
     return transactions.filter(tx => tx.rateSheet === selectedRateSheet);
   }, [transactions, selectedRateSheet]);
 
-  const handleGenerateReport = (type: 'daily' | 'monthly' | 'material') => {
+  const handleGenerateReport = (type: 'daily' | 'weekly' | 'monthly' | 'material') => {
     generateReportPDF(type, filteredTransactions, undefined, selectedRateSheet);
   };
 
@@ -76,6 +76,13 @@ export function ReportsPage({ transactions }: ReportsPageProps) {
           >
             <ReportIcon className="h-6 w-6" />
             Download Daily Report
+          </button>
+          <button
+            onClick={() => handleGenerateReport('weekly')}
+            className="w-full flex items-center justify-center gap-3 py-4 px-4 text-lg font-semibold text-white bg-brand-orange rounded-lg shadow-md hover:opacity-90 transition-transform transform hover:scale-105"
+          >
+            <ReportIcon className="h-6 w-6" />
+            Download Weekly Report
           </button>
           <button
             onClick={() => handleGenerateReport('monthly')}
