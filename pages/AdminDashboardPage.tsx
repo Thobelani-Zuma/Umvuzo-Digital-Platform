@@ -78,40 +78,59 @@ export function AdminDashboardPage({ allTransactions }: { allTransactions: Trans
     return allTxs.filter(tx => tx.rateSheet === selectedRateSheet);
   }, [allTransactions, selectedRateSheet]);
 
-  const { totalPayout, totalWeight, repCount, repPerformanceData, todaysPayout } = useMemo(() => {
-    const allTxs = pageTransactions;
-    
-    const payout = allTxs.reduce((sum, tx) => sum + tx.total, 0);
-    const weight = allTxs.reduce((sum, tx) => sum + tx.weight, 0);
-    
-    const reps = new Set(allTxs.map(tx => tx.repName));
-    
-    const groupedByEmail = allTxs.reduce((acc, tx) => {
-        const email = tx.userEmail || 'unknown';
-        if (!acc[email]) {
-            acc[email] = [];
-        }
-        acc[email].push(tx);
-        return acc;
+  const {
+    totalPayout,
+    totalWeight,
+    repCount,
+    repPerformanceData,
+    todaysPayout,
+    todaysWalkinPayout,
+    calculatedClosingBalance,
+  } = useMemo(() => {
+    // Stats based on the rate sheet filter in the UI
+    const filteredTxs = pageTransactions;
+    const payout = filteredTxs.reduce((sum, tx) => sum + tx.total, 0);
+    const weight = filteredTxs.reduce((sum, tx) => sum + tx.weight, 0);
+    const reps = new Set(filteredTxs.map(tx => tx.repName));
+
+    const groupedByEmail = filteredTxs.reduce((acc, tx) => {
+      const email = tx.userEmail || 'unknown';
+      if (!acc[email]) acc[email] = [];
+      acc[email].push(tx);
+      return acc;
     }, {} as TransactionData);
 
-    // FIX: Explicitly type the destructured arguments from Object.entries to resolve 'unknown' type inference for 'txs'.
     const performance = Object.entries(groupedByEmail).map(([email, txs]: [string, Transaction[]]) => {
-        const repName = txs.length > 0 ? txs[0].repName : email.split('@')[0].replace(/\./g, ' ').replace(/(^\w|\s\w)/g, m => m.toUpperCase());
-        const totalWeight = txs.reduce((sum, tx) => sum + tx.weight, 0);
-        return { name: repName, kg: parseFloat(totalWeight.toFixed(2)) };
-    }).sort((a,b) => b.kg - a.kg);
-    
+      const repName = txs.length > 0 ? txs[0].repName : email.split('@')[0].replace(/\./g, ' ').replace(/(^\w|\s\w)/g, m => m.toUpperCase());
+      const totalWeight = txs.reduce((sum, tx) => sum + tx.weight, 0);
+      return { name: repName, kg: parseFloat(totalWeight.toFixed(2)) };
+    }).sort((a, b) => b.kg - a.kg);
+
+    // Date range for "today"
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
     const todayEnd = new Date();
     todayEnd.setHours(23, 59, 59, 999);
-    
-    const todaysTxs = allTxs.filter(tx => {
+
+    // "Today's Payout" based on the UI filter
+    const todaysFilteredTxs = filteredTxs.filter(tx => {
+      const txDate = new Date(tx.date);
+      return txDate >= todayStart && txDate <= todayEnd;
+    });
+    const dailyPayout = todaysFilteredTxs.reduce((sum, tx) => sum + tx.total, 0);
+
+    // --- Balance Calculation (Walk-ins only) ---
+    // Start from all transactions, ignoring the UI filter
+    const allTxsToday = Object.values(allTransactions).flat().filter(tx => {
         const txDate = new Date(tx.date);
         return txDate >= todayStart && txDate <= todayEnd;
     });
-    const dailyPayout = todaysTxs.reduce((sum, tx) => sum + tx.total, 0);
+
+    const dailyWalkinPayout = allTxsToday
+      .filter(tx => tx.rateSheet === 'Walk-ins')
+      .reduce((sum, tx) => sum + tx.total, 0);
+
+    const closingBalance = parseFloat(openingBalance || '0') - dailyWalkinPayout;
 
     return {
       totalPayout: payout,
@@ -119,10 +138,11 @@ export function AdminDashboardPage({ allTransactions }: { allTransactions: Trans
       repCount: reps.size,
       repPerformanceData: performance,
       todaysPayout: dailyPayout,
+      todaysWalkinPayout: dailyWalkinPayout,
+      calculatedClosingBalance: closingBalance,
     };
-  }, [pageTransactions]);
+  }, [pageTransactions, allTransactions, openingBalance]);
 
-  const calculatedClosingBalance = parseFloat(openingBalance || '0') - todaysPayout;
 
   const handleUpdateOpeningBalance = async () => {
     setBalanceMessage(null);
@@ -135,7 +155,7 @@ export function AdminDashboardPage({ allTransactions }: { allTransactions: Trans
       return;
     }
 
-    const finalClosingBalance = ob - todaysPayout;
+    const finalClosingBalance = ob - todaysWalkinPayout;
 
     const balanceDocRef = db.collection('dailyBalances').doc(todayStr);
     try {
@@ -311,13 +331,13 @@ export function AdminDashboardPage({ allTransactions }: { allTransactions: Trans
             <div className="pt-4 border-t space-y-4">
                 <StatCard 
                     icon={<PayoutIcon className="h-8 w-8 text-white"/>}
-                    title="Today's Payouts"
+                    title="Today's Payouts (Filtered)"
                     value={`R ${todaysPayout.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                     color="bg-red-500"
                 />
                 <StatCard 
                     icon={<CashIcon className="h-8 w-8 text-white"/>}
-                    title="Current Day's Balance"
+                    title="Current Day's Balance (Walk-ins)"
                     value={`R ${calculatedClosingBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                     color="bg-blue-500"
                 />
