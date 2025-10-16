@@ -278,7 +278,6 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
                 </button>
                 <button
                   onClick={handlePrintReceipt}
-                  disabled={items.length === 0}
                   className="w-full flex items-center justify-center gap-2 py-3 px-4 font-semibold text-brand-green border-2 border-brand-green rounded-lg hover:bg-green-50 transition-colors disabled:border-gray-300 disabled:text-gray-400 disabled:bg-gray-50"
                 >
                     <PrintIcon className="h-5 w-5" />
