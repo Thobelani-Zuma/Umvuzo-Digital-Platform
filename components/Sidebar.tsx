@@ -5,7 +5,7 @@ import { DashboardIcon, TransactionIcon, ReportIcon, LogoutIcon, LogoIcon } from
 interface SidebarProps {
   activePage: Page;
   setActivePage: (page: Page) => void;
-  onLogout: () => void;
+  onLogout: () => Promise<void>;
 }
 
 const navItems = [

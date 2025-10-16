@@ -12,14 +12,14 @@ interface DashboardLayoutProps {
   user: User;
   activePage: Page;
   setActivePage: (page: Page) => void;
-  onLogout: () => void;
+  onLogout: () => Promise<void>;
   transactions: Transaction[];
   allTransactions: TransactionData;
   addMultipleTransactions: (
     items: Omit<Transaction, 'id' | 'date' | 'repName' | 'clientName' | 'userEmail'>[], 
     clientName: string,
     transactionDate: Date
-  ) => void;
+  ) => Promise<void>;
 }
 
 const pageTitles: { [key in Page]?: string } = {
@@ -83,6 +83,7 @@ export function DashboardLayout({ user, activePage, setActivePage, onLogout, tra
                   <DashboardPage transactions={transactions} />
                 </div>
                 <div style={{ display: activePage === Page.Transactions ? 'block' : 'none' }}>
+                  {/* FIX: The addMultipleTransactions function is async and returns a Promise. The prop type in DashboardLayoutProps was updated to Promise<void> to match the function signature. */}
                   <TransactionsPage repName={user.name} addMultipleTransactions={addMultipleTransactions} />
                 </div>
                 <div style={{ display: activePage === Page.Reports ? 'block' : 'none' }}>

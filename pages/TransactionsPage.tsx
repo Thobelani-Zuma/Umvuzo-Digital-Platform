@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Transaction } from '../types';
 import { RATE_SHEETS } from '../constants';
 import { PlusIcon, TrashIcon } from '../components/icons/Icons';
@@ -12,200 +12,202 @@ interface TransactionsPageProps {
   ) => Promise<void>;
 }
 
-interface TransactionItem {
-  material: string;
-  weight: string;
-  pricePerKg: number;
-  total: number;
-}
-
-const initialItemState: TransactionItem = {
-  material: '',
-  weight: '',
-  pricePerKg: 0,
-  total: 0,
-};
+type TransactionItem = Omit<Transaction, 'id' | 'date' | 'repName' | 'clientName' | 'userEmail'>;
 
 export function TransactionsPage({ repName, addMultipleTransactions }: TransactionsPageProps) {
+  // State for the overall transaction
   const [clientName, setClientName] = useState('');
-  const [transactionDate, setTransactionDate] = useState(new Date());
+  const [timeOfDay, setTimeOfDay] = useState<'AM' | 'PM'>('AM');
+  const [items, setItems] = useState<TransactionItem[]>([]);
+  
+  // State for the item currently being added
   const [rateSheetKey, setRateSheetKey] = useState(Object.keys(RATE_SHEETS)[0]);
-  const [items, setItems] = useState<TransactionItem[]>([initialItemState]);
+  const [material, setMaterial] = useState(RATE_SHEETS[rateSheetKey][0].type);
+  const [weight, setWeight] = useState('');
+
+  // State for submission feedback
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submissionStatus, setSubmissionStatus] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [status, setStatus] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   const rateSheet = RATE_SHEETS[rateSheetKey];
-  
+
   useEffect(() => {
-    // Reset items when rate sheet changes
-    setItems([initialItemState]);
-  }, [rateSheetKey]);
+    setMaterial(rateSheet[0]?.type || '');
+  }, [rateSheetKey, rateSheet]);
 
-  const handleItemChange = (index: number, field: keyof TransactionItem, value: string | number) => {
-    const newItems = [...items];
-    const item = { ...newItems[index] };
-
-    if (field === 'material') {
-      const materialInfo = rateSheet.find(m => m.type === value);
-      item.material = value as string;
-      item.pricePerKg = materialInfo ? materialInfo.price : 0;
-    } else if (field === 'weight') {
-      item.weight = value as string;
-    }
-    
-    const weightValue = parseFloat(item.weight);
-    if (!isNaN(weightValue) && item.pricePerKg > 0) {
-      item.total = weightValue * item.pricePerKg;
-    } else {
-      item.total = 0;
+  const handleAddItem = () => {
+    setStatus(null);
+    const weightValue = parseFloat(weight);
+    if (isNaN(weightValue) || weightValue <= 0) {
+      alert('Please enter a valid weight.');
+      return;
     }
 
-    newItems[index] = item;
-    setItems(newItems);
-  };
-
-  const addItem = () => {
-    setItems([...items, initialItemState]);
-  };
-
-  const removeItem = (index: number) => {
-    if (items.length > 1) {
-      const newItems = items.filter((_, i) => i !== index);
-      setItems(newItems);
+    const materialInfo = rateSheet.find(m => m.type === material);
+    if (!materialInfo) {
+      alert('Please select a valid material.');
+      return;
     }
+
+    const newItem: TransactionItem = {
+      material,
+      weight: weightValue,
+      pricePerKg: materialInfo.price,
+      total: weightValue * materialInfo.price,
+    };
+
+    setItems([...items, newItem]);
+    setWeight(''); // Reset weight for the next item
   };
+  
+  const handleRemoveItem = (index: number) => {
+    setItems(items.filter((_, i) => i !== index));
+  };
+
+  const grandTotal = useMemo(() => {
+    return items.reduce((sum, item) => sum + item.total, 0);
+  }, [items]);
   
   const resetForm = () => {
     setClientName('');
-    setTransactionDate(new Date());
+    setItems([]);
+    setWeight('');
+    setTimeOfDay('AM');
     setRateSheetKey(Object.keys(RATE_SHEETS)[0]);
-    setItems([initialItemState]);
-  };
+    setStatus(null);
+  }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSubmissionStatus(null);
-
+  const handleSaveAll = async () => {
+    setStatus(null);
     if (!clientName.trim()) {
-        setSubmissionStatus({ message: 'Client name is required.', type: 'error' });
-        return;
+      setStatus({ message: 'Client name is required.', type: 'error' });
+      return;
     }
-    
-    const validItems = items.filter(item => item.material && parseFloat(item.weight) > 0);
-    
-    if (validItems.length === 0) {
-        setSubmissionStatus({ message: 'Please add at least one valid material with a weight.', type: 'error' });
-        return;
+    if (items.length === 0) {
+      setStatus({ message: 'Please add at least one material to the transaction.', type: 'error' });
+      return;
     }
 
     setIsSubmitting(true);
+    const transactionDate = new Date();
+    transactionDate.setHours(timeOfDay === 'AM' ? 10 : 14, 0, 0, 0);
+
     try {
-      const transactionItems = validItems.map(item => ({
-        material: item.material,
-        weight: parseFloat(item.weight),
-        pricePerKg: item.pricePerKg,
-        total: item.total,
-      }));
-      await addMultipleTransactions(transactionItems, clientName, transactionDate);
-      setSubmissionStatus({ message: 'Transaction logged successfully!', type: 'success' });
-      resetForm();
-      setTimeout(() => setSubmissionStatus(null), 3000);
+      await addMultipleTransactions(items, clientName, transactionDate);
+      setStatus({ message: 'Transaction saved successfully!', type: 'success' });
+      setTimeout(resetForm, 2000);
     } catch (error) {
-      console.error('Transaction submission error:', error);
-      setSubmissionStatus({ message: 'Failed to log transaction. Please try again.', type: 'error' });
+      console.error('Failed to save transaction:', error);
+      setStatus({ message: 'Failed to save transaction. Please try again.', type: 'error' });
     } finally {
       setIsSubmitting(false);
     }
   };
-  
-  const grandTotal = items.reduce((sum, item) => sum + item.total, 0);
+
 
   return (
     <div>
-      <h1 className="text-3xl font-bold text-gray-800 mb-6">Log New Transaction</h1>
-      
-      <form onSubmit={handleSubmit} className="bg-white p-8 rounded-xl shadow-md space-y-6 max-w-4xl mx-auto">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <h1 className="text-3xl font-bold text-gray-800 mb-6">Log Transaction</h1>
+
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+        {/* Left Panel: Form */}
+        <div className="lg:col-span-3 bg-white p-6 rounded-xl shadow-md space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label htmlFor="repName" className="block text-sm font-medium text-gray-700">Representative Name</label>
-              <input id="repName" type="text" value={repName} disabled className="mt-1 block w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md shadow-sm focus:outline-none" />
+              <label htmlFor="repName" className="block text-sm font-medium text-gray-700">Rep Name</label>
+              <input id="repName" type="text" value={repName} disabled className="mt-1 block w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md" />
             </div>
             <div>
-              <label htmlFor="clientName" className="block text-sm font-medium text-gray-700">Client Name / Walk-in</label>
-              <input id="clientName" type="text" value={clientName} onChange={e => setClientName(e.target.value)} required className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:ring-brand-orange focus:border-brand-orange" />
+              <label htmlFor="clientName" className="block text-sm font-medium text-gray-700">Client Name</label>
+              <input id="clientName" type="text" placeholder="Enter client name" value={clientName} onChange={e => setClientName(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-brand-orange focus:border-brand-orange" />
             </div>
-            <div>
-                <label htmlFor="transactionDate" className="block text-sm font-medium text-gray-700">Transaction Date</label>
-                <input
-                    id="transactionDate"
-                    type="date"
-                    value={transactionDate.toISOString().split('T')[0]}
-                    onChange={e => setTransactionDate(new Date(e.target.value))}
-                    required
-                    className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:ring-brand-orange focus:border-brand-orange"
-                />
+            <div className="md:col-span-2">
+                <label htmlFor="timeOfDay" className="block text-sm font-medium text-gray-700">Time of Day</label>
+                <select 
+                    id="timeOfDay" 
+                    value={timeOfDay} 
+                    onChange={e => setTimeOfDay(e.target.value as 'AM' | 'PM')}
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-brand-orange focus:border-brand-orange"
+                >
+                    <option value="AM">AM</option>
+                    <option value="PM">PM</option>
+                </select>
             </div>
-            <div>
-              <label htmlFor="rateSheet" className="block text-sm font-medium text-gray-700">Rate Sheet</label>
-              <select id="rateSheet" value={rateSheetKey} onChange={e => setRateSheetKey(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:ring-brand-orange focus:border-brand-orange">
-                {Object.keys(RATE_SHEETS).map(key => <option key={key} value={key}>{key}</option>)}
-              </select>
+          </div>
+          
+          <div className="pt-6 border-t">
+            <h2 className="text-xl font-semibold text-gray-700">Add Material</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+              <div>
+                <label htmlFor="rateSheet" className="block text-sm font-medium text-gray-700">Rate Sheet</label>
+                <select id="rateSheet" value={rateSheetKey} onChange={e => setRateSheetKey(e.target.value)} className="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-brand-orange focus:border-brand-orange">
+                    {Object.keys(RATE_SHEETS).map(sheet => <option key={sheet} value={sheet}>{sheet}</option>)}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="material" className="block text-sm font-medium text-gray-700">Material</label>
+                <select id="material" value={material} onChange={e => setMaterial(e.target.value)} className="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-brand-orange focus:border-brand-orange">
+                    {rateSheet.map(m => <option key={m.type} value={m.type}>{`${m.type} (R${m.price.toFixed(1)}/kg)`}</option>)}
+                </select>
+              </div>
+              <div className="md:col-span-2">
+                <label htmlFor="weight" className="block text-sm font-medium text-gray-700">Weight (kg)</label>
+                <input type="number" step="0.01" id="weight" value={weight} onChange={e => setWeight(e.target.value)} placeholder="0.00" className="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-brand-orange focus:border-brand-orange" />
+              </div>
             </div>
+             <button onClick={handleAddItem} className="mt-4 w-full flex items-center justify-center gap-2 py-3 px-4 font-semibold text-brand-orange border-2 border-dashed border-brand-orange rounded-lg hover:bg-orange-50 transition-colors">
+              <PlusIcon className="h-5 w-5" />
+              Add Material to Transaction
+            </button>
+          </div>
         </div>
-        
-        <div className="pt-4 border-t border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-700 mb-4">Materials</h2>
-          {items.map((item, index) => (
-            <div key={index} className="grid grid-cols-1 md:grid-cols-10 gap-4 items-end mb-4 p-4 bg-gray-50 rounded-lg">
-                <div className="md:col-span-3">
-                  <label htmlFor={`material-${index}`} className="block text-xs font-medium text-gray-600">Material</label>
-                  <select id={`material-${index}`} value={item.material} onChange={e => handleItemChange(index, 'material', e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:ring-brand-orange focus:border-brand-orange">
-                    <option value="">Select a material</option>
-                    {rateSheet.map(m => <option key={m.type} value={m.type}>{m.type}</option>)}
-                  </select>
-                </div>
-                <div className="md:col-span-2">
-                  <label htmlFor={`weight-${index}`} className="block text-xs font-medium text-gray-600">Weight (kg)</label>
-                  <input id={`weight-${index}`} type="number" step="0.01" value={item.weight} onChange={e => handleItemChange(index, 'weight', e.target.value)} placeholder="0.00" className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:ring-brand-orange focus:border-brand-orange" />
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-xs font-medium text-gray-600">Price/kg</label>
-                  <p className="mt-1 px-3 py-2 text-gray-700">R {item.pricePerKg.toFixed(2)}</p>
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-xs font-medium text-gray-600">Total</label>
-                  <p className="mt-1 px-3 py-2 text-gray-800 font-semibold">R {item.total.toFixed(2)}</p>
-                </div>
-                <div className="md:col-span-1">
-                  <button type="button" onClick={() => removeItem(index)} disabled={items.length <= 1} className="w-full flex items-center justify-center p-2 text-red-500 rounded-md hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent">
-                    <TrashIcon className="h-6 w-6" />
-                  </button>
-                </div>
+
+        {/* Right Panel: Summary */}
+        <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-md">
+            <h2 className="text-xl font-semibold text-gray-700 mb-4">Current Transaction Summary</h2>
+            <div className="bg-gray-50 border border-dashed rounded-lg p-4 min-h-[200px] overflow-y-auto max-h-64">
+                {items.length === 0 ? (
+                    <p className="text-gray-500 text-center py-10">No materials added yet.</p>
+                ) : (
+                    <ul className="space-y-3">
+                        {items.map((item, index) => (
+                           <li key={index} className="flex justify-between items-center bg-white p-3 rounded-md shadow-sm">
+                               <div>
+                                   <p className="font-semibold text-gray-800">{item.material}</p>
+                                   <p className="text-sm text-gray-500">{item.weight.toFixed(2)} kg @ R{item.pricePerKg.toFixed(2)}/kg</p>
+                               </div>
+                               <div className="flex items-center gap-4">
+                                   <p className="font-semibold text-gray-800">R{item.total.toFixed(2)}</p>
+                                   <button onClick={() => handleRemoveItem(index)} className="text-red-500 hover:text-red-700">
+                                       <TrashIcon className="h-5 w-5" />
+                                   </button>
+                               </div>
+                           </li>
+                        ))}
+                    </ul>
+                )}
             </div>
-          ))}
-          <button type="button" onClick={addItem} className="flex items-center gap-2 mt-2 px-4 py-2 text-sm font-medium text-white bg-brand-green rounded-md hover:opacity-90">
-            <PlusIcon className="h-5 w-5" />
-            Add Another Item
-          </button>
-        </div>
-        
-        <div className="pt-6 border-t border-gray-200">
-            <div className="flex justify-end items-center gap-6">
-                <div className="text-right">
-                    <p className="text-lg text-gray-600">Grand Total</p>
-                    <p className="text-3xl font-bold text-brand-orange">R {grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-                </div>
-                <button type="submit" disabled={isSubmitting} className="px-8 py-3 text-lg font-semibold text-white bg-brand-orange rounded-lg shadow-md hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-orange disabled:bg-gray-400">
-                  {isSubmitting ? 'Submitting...' : 'Log Transaction'}
-                </button>
+            
+            <div className="mt-4 bg-orange-50 p-4 rounded-lg text-center">
+                <p className="text-gray-600">Grand Total</p>
+                <p className="text-4xl font-bold text-brand-orange">R {grandTotal.toFixed(2)}</p>
             </div>
-            {submissionStatus && (
-              <p className={`mt-4 text-center font-medium ${submissionStatus.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
-                {submissionStatus.message}
+            
+            {status && (
+              <p className={`mt-4 text-center font-medium ${status.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+                {status.message}
               </p>
             )}
+
+            <button
+              onClick={handleSaveAll}
+              disabled={isSubmitting || items.length === 0}
+              className="mt-4 w-full py-4 text-lg font-semibold text-white bg-slate-600 rounded-lg shadow-md hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 disabled:bg-gray-400 disabled:cursor-not-allowed"
+            >
+              {isSubmitting ? 'Saving...' : `Complete & Save All (${items.length})`}
+            </button>
         </div>
-      </form>
+      </div>
     </div>
   );
 }

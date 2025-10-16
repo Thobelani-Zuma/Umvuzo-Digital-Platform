@@ -2,7 +2,7 @@ import React from 'react';
 import { AdminIcon, LogoutIcon, LogoIcon } from './icons/Icons';
 
 interface AdminSidebarProps {
-  onLogout: () => void;
+  onLogout: () => Promise<void>;
 }
 
 export function AdminSidebar({ onLogout }: AdminSidebarProps) {
