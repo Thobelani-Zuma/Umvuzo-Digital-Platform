@@ -21,7 +21,6 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
   const [weight, setWeight] = useState('');
   const [items, setItems] = useState<TransactionItem[]>([]);
   const [message, setMessage] = useState('');
-  const [transactionDateInput, setTransactionDateInput] = useState(new Date().toISOString().split('T')[0]);
   const [timeOfDay, setTimeOfDay] = useState<'AM' | 'PM'>('AM');
   const [receiptData, setReceiptData] = useState<{ items: TransactionItem[], clientName: string, repName: string, grandTotal: number, date: Date } | null>(null);
   
@@ -68,8 +67,8 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
   const handleSaveAll = () => {
     if (items.length === 0) return;
     
-    // Create a date object in the local timezone from the input string
-    const finalDate = new Date(`${transactionDateInput}T00:00:00`);
+    // Use the current date
+    const finalDate = new Date();
 
     if (timeOfDay === 'AM') {
         finalDate.setHours(10, 0, 0, 0); // Set to 10:00 AM
@@ -187,17 +186,6 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
               <div>
                 <label htmlFor="client-name" className="block text-sm font-medium text-gray-700">Client Name</label>
                 <input id="client-name" type="text" value={clientName} onChange={handleClientNameChange} placeholder="Enter client name" disabled={items.length > 0} className="mt-1 w-full p-2 border border-gray-300 rounded-md focus:ring-brand-orange focus:border-brand-orange disabled:bg-gray-200" />
-              </div>
-              <div>
-                <label htmlFor="transaction-date" className="block text-sm font-medium text-gray-700">Transaction Date</label>
-                <input 
-                    id="transaction-date" 
-                    type="date" 
-                    value={transactionDateInput} 
-                    onChange={e => setTransactionDateInput(e.target.value)} 
-                    disabled={items.length > 0}
-                    className="mt-1 w-full p-2 border border-gray-300 rounded-md focus:ring-brand-orange focus:border-brand-orange disabled:bg-gray-200" 
-                />
               </div>
               <div>
                 <label htmlFor="time-of-day" className="block text-sm font-medium text-gray-700">Time of Day</label>
