@@ -117,18 +117,21 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
                 <head>
                     <title>Transaction Receipt</title>
                     <style>
-                        body { font-family: sans-serif; margin: 20px; color: #333; }
-                        .info { margin-bottom: 20px; border-bottom: 1px dashed #ccc; padding-bottom: 15px; }
-                        .info p { margin: 5px 0; }
-                        table { width: 100%; border-collapse: collapse; }
-                        th, td { padding: 10px 5px; text-align: left; border-bottom: 1px solid #eee; }
-                        th { font-weight: bold; color: #555; }
-                        thead th { border-bottom: 2px solid #333; }
+                        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 25px; color: #111; }
+                        .info { margin-bottom: 25px; padding-bottom: 15px; }
+                        .info p { margin: 6px 0; font-size: 14px; }
+                        .info strong { font-weight: 600; color: #000; }
+                        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+                        th, td { padding: 12px 0; text-align: left; }
+                        th { font-weight: 600; }
+                        thead th { border-bottom: 2px solid #000; }
+                        tbody tr { border-bottom: 1px solid #eaeaea; }
                         .align-right { text-align: right; }
-                        tfoot td { font-weight: bold; font-size: 1.1em; border-bottom: none; }
-                        tfoot .grand-total-label { text-align: right; padding-right: 10px; }
-                        .footer { margin-top: 30px; text-align: center; font-size: 0.9em; color: #888; }
-                        .footer p { margin: 4px 0; }
+                        tfoot td { font-weight: 600; font-size: 1.1em; padding-top: 15px; border-bottom: none; }
+                        tfoot .grand-total-label { text-align: right; padding-right: 15px; }
+                        .footer { margin-top: 40px; text-align: center; font-size: 12px; color: #777; }
+                        .footer .thank-you { font-style: italic; margin-bottom: 10px; }
+                        .footer .credit { font-size: 10px; }
                     </style>
                 </head>
                 <body>
@@ -162,8 +165,8 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
                         </tfoot>
                     </table>
                     <div class="footer">
-                        <p>Thank you for your business</p>
-                        <p>Umvuzo is developed and powered by Isphepho</p>
+                        <p class="thank-you">Thank you for your business</p>
+                        <p class="credit">Umvuzo is developed and powered by Isphepho</p>
                     </div>
                 </body>
             </html>
