@@ -126,33 +126,6 @@ export function AdminDashboardPage({ allTransactions }: { allTransactions: Trans
     });
   };
 
-  const handleResetAllData = async () => {
-    const confirmation = window.confirm(
-        "ARE YOU SURE?\n\nThis action is irreversible and will permanently delete all transaction and financial history for all users.\n\nUser accounts will NOT be deleted."
-    );
-
-    if (confirmation) {
-        try {
-            const transactionsRef = db.collection('transactions');
-            const transactionsSnapshot = await transactionsRef.get();
-            const transactionDeletions = transactionsSnapshot.docs.map(doc => doc.ref.delete());
-            
-            const balancesRef = db.collection('dailyBalances');
-            const balancesSnapshot = await balancesRef.get();
-            const balanceDeletions = balancesSnapshot.docs.map(doc => doc.ref.delete());
-            
-            await Promise.all([...transactionDeletions, ...balanceDeletions]);
-            
-            alert('All application data has been successfully reset.');
-            window.location.reload();
-        } catch (error) {
-            console.error("Error resetting data: ", error);
-            alert("An error occurred while resetting data. Please check the console for details.");
-        }
-    }
-  };
-
-
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
@@ -288,19 +261,6 @@ export function AdminDashboardPage({ allTransactions }: { allTransactions: Trans
                 </tfoot>
             </table>
         </div>
-      </div>
-
-      <div className="bg-white p-6 rounded-xl shadow-md mt-8 border-l-4 border-red-500">
-        <h2 className="text-xl font-semibold text-gray-700 mb-2">Danger Zone</h2>
-        <p className="text-gray-600 mb-4">
-          This action is destructive and cannot be undone. Please proceed with caution.
-        </p>
-        <button
-          onClick={handleResetAllData}
-          className="w-full sm:w-auto py-2 px-6 font-semibold text-white bg-red-600 rounded-lg shadow-md hover:bg-red-700 transition-colors"
-        >
-          Reset All Application Data
-        </button>
       </div>
     </div>
   );
