@@ -1,272 +1,211 @@
 import React, { useState, useEffect } from 'react';
-import { RATE_SHEETS } from '../constants';
 import { Transaction } from '../types';
-import { PlusIcon, TrashIcon, PrintIcon } from '../components/icons/Icons';
+import { RATE_SHEETS } from '../constants';
+import { PlusIcon, TrashIcon } from '../components/icons/Icons';
 
 interface TransactionsPageProps {
   repName: string;
   addMultipleTransactions: (
-    items: Omit<Transaction, 'id' | 'date' | 'repName' | 'clientName' | 'userEmail'>[], 
+    items: Omit<Transaction, 'id' | 'date' | 'repName' | 'clientName' | 'userEmail'>[],
     clientName: string,
     transactionDate: Date
-  ) => void;
+  ) => Promise<void>;
 }
 
-type TransactionItem = Omit<Transaction, 'id' | 'date' | 'repName' | 'clientName' | 'userEmail'>;
+interface TransactionItem {
+  material: string;
+  weight: string;
+  pricePerKg: number;
+  total: number;
+}
+
+const initialItemState: TransactionItem = {
+  material: '',
+  weight: '',
+  pricePerKg: 0,
+  total: 0,
+};
 
 export function TransactionsPage({ repName, addMultipleTransactions }: TransactionsPageProps) {
   const [clientName, setClientName] = useState('');
-  const [rateSheet, setRateSheet] = useState(Object.keys(RATE_SHEETS)[0]);
-  const [material, setMaterial] = useState(RATE_SHEETS[rateSheet][0].type);
-  const [weight, setWeight] = useState('');
-  const [items, setItems] = useState<TransactionItem[]>([]);
-  const [message, setMessage] = useState('');
-  const [timeOfDay, setTimeOfDay] = useState<'AM' | 'PM'>('AM');
-  const [receiptData, setReceiptData] = useState<{ items: TransactionItem[], clientName: string, repName: string, grandTotal: number, date: Date } | null>(null);
+  const [transactionDate, setTransactionDate] = useState(new Date());
+  const [rateSheetKey, setRateSheetKey] = useState(Object.keys(RATE_SHEETS)[0]);
+  const [items, setItems] = useState<TransactionItem[]>([initialItemState]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submissionStatus, setSubmissionStatus] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  const rateSheet = RATE_SHEETS[rateSheetKey];
   
   useEffect(() => {
-    setMaterial(RATE_SHEETS[rateSheet][0].type);
-  }, [rateSheet]);
+    // Reset items when rate sheet changes
+    setItems([initialItemState]);
+  }, [rateSheetKey]);
 
-  const handleAddItem = (e: React.FormEvent) => {
-    e.preventDefault();
-    setReceiptData(null);
-    setMessage('');
-    const weightNum = parseFloat(weight);
-    if (!clientName.trim()) {
-        setMessage('Please enter a client name first.');
-        setTimeout(() => setMessage(''), 3000);
-        return;
-    }
-    if (isNaN(weightNum) || weightNum <= 0) {
-      setMessage('Please enter a valid weight.');
-      setTimeout(() => setMessage(''), 3000);
-      return;
-    }
+  const handleItemChange = (index: number, field: keyof TransactionItem, value: string | number) => {
+    const newItems = [...items];
+    const item = { ...newItems[index] };
 
-    const materialData = RATE_SHEETS[rateSheet].find(m => m.type === material);
-    if (!materialData) return;
+    if (field === 'material') {
+      const materialInfo = rateSheet.find(m => m.type === value);
+      item.material = value as string;
+      item.pricePerKg = materialInfo ? materialInfo.price : 0;
+    } else if (field === 'weight') {
+      item.weight = value as string;
+    }
     
-    const newItem: TransactionItem = {
-      material: material,
-      weight: weightNum,
-      pricePerKg: materialData.price,
-      total: weightNum * materialData.price,
-    };
+    const weightValue = parseFloat(item.weight);
+    if (!isNaN(weightValue) && item.pricePerKg > 0) {
+      item.total = weightValue * item.pricePerKg;
+    } else {
+      item.total = 0;
+    }
 
-    setItems([...items, newItem]);
-    setWeight('');
+    newItems[index] = item;
+    setItems(newItems);
   };
 
-  const handleRemoveItem = (index: number) => {
-    setItems(items.filter((_, i) => i !== index));
+  const addItem = () => {
+    setItems([...items, initialItemState]);
+  };
+
+  const removeItem = (index: number) => {
+    if (items.length > 1) {
+      const newItems = items.filter((_, i) => i !== index);
+      setItems(newItems);
+    }
+  };
+  
+  const resetForm = () => {
+    setClientName('');
+    setTransactionDate(new Date());
+    setRateSheetKey(Object.keys(RATE_SHEETS)[0]);
+    setItems([initialItemState]);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmissionStatus(null);
+
+    if (!clientName.trim()) {
+        setSubmissionStatus({ message: 'Client name is required.', type: 'error' });
+        return;
+    }
+    
+    const validItems = items.filter(item => item.material && parseFloat(item.weight) > 0);
+    
+    if (validItems.length === 0) {
+        setSubmissionStatus({ message: 'Please add at least one valid material with a weight.', type: 'error' });
+        return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const transactionItems = validItems.map(item => ({
+        material: item.material,
+        weight: parseFloat(item.weight),
+        pricePerKg: item.pricePerKg,
+        total: item.total,
+      }));
+      await addMultipleTransactions(transactionItems, clientName, transactionDate);
+      setSubmissionStatus({ message: 'Transaction logged successfully!', type: 'success' });
+      resetForm();
+      setTimeout(() => setSubmissionStatus(null), 3000);
+    } catch (error) {
+      console.error('Transaction submission error:', error);
+      setSubmissionStatus({ message: 'Failed to log transaction. Please try again.', type: 'error' });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
   
   const grandTotal = items.reduce((sum, item) => sum + item.total, 0);
 
-  const handleSaveAll = () => {
-    if (items.length === 0) return;
-    
-    // Use the current date
-    const finalDate = new Date();
-
-    if (timeOfDay === 'AM') {
-        finalDate.setHours(10, 0, 0, 0); // Set to 10:00 AM
-    } else {
-        finalDate.setHours(14, 0, 0, 0); // Set to 2:00 PM
-    }
-
-    addMultipleTransactions(items, clientName.trim(), finalDate);
-    setReceiptData({ items, clientName: clientName.trim(), repName, grandTotal, date: finalDate });
-    setItems([]);
-    setClientName('');
-    setMessage(`${items.length} transaction(s) saved. You can now print the receipt.`);
-  }
-  
-  const handlePrintReceipt = () => {
-    if (!receiptData) return;
-
-    const { items, clientName, repName, grandTotal, date } = receiptData;
-
-    const receiptContent = `
-        <html>
-        <head>
-            <title>Umvuzo Receipt</title>
-            <style>
-                body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; color: #333; }
-                .container { max-width: 300px; margin: auto; }
-                .header { text-align: center; margin-bottom: 20px; }
-                .header h1 { margin: 0; font-size: 1.5em; color: #0b6000; }
-                .header p { margin: 0; font-size: 0.9em; color: #ff6600; }
-                .info { margin-bottom: 15px; border-bottom: 1px dashed #ccc; padding-bottom: 10px; font-size: 0.8em; }
-                .info p { margin: 4px 0; }
-                table { width: 100%; border-collapse: collapse; font-size: 0.8em; }
-                th, td { padding: 5px; text-align: left; }
-                th { border-bottom: 1px solid #333; }
-                .text-right { text-align: right; }
-                .total { margin-top: 15px; text-align: right; border-top: 2px double #333; padding-top: 10px; }
-                .total h2 { margin: 0; font-size: 1.2em; }
-                .footer { text-align: center; margin-top: 25px; font-style: italic; color: #555; font-size: 0.8em; }
-                @media print {
-                  body { margin: 0; }
-                  .container { box-shadow: none; border: none; }
-                }
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <div class="header">
-                    <h1>Umvuzo</h1>
-                    <p>Customer Receipt</p>
-                </div>
-                <div class="info">
-                    <p><strong>Date:</strong> ${date.toLocaleString('en-ZA')}</p>
-                    <p><strong>Client:</strong> ${clientName}</p>
-                    <p><strong>Rep:</strong> ${repName}</p>
-                </div>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Material</th>
-                            <th class="text-right">Kg</th>
-                            <th class="text-right">Total</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${items.map(item => `
-                            <tr>
-                                <td>${item.material}</td>
-                                <td class="text-right">${item.weight.toFixed(2)}</td>
-                                <td class="text-right">R ${item.total.toFixed(2)}</td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-                <div class="total">
-                    <h2>Grand Total: R ${grandTotal.toFixed(2)}</h2>
-                </div>
-                <div class="footer">
-                    <p>Thank you for your business!</p>
-                </div>
-            </div>
-        </body>
-        </html>
-    `;
-
-    const printWindow = window.open('', '_blank', 'height=600,width=400');
-    if (printWindow) {
-        printWindow.document.write(receiptContent);
-        printWindow.document.close();
-        printWindow.focus();
-        setTimeout(() => {
-          printWindow.print();
-        }, 250);
-    } else {
-        alert('Please allow popups to print the receipt.');
-    }
-  };
-
-  const handleClientNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setClientName(e.target.value);
-    setReceiptData(null);
-    setMessage('');
-  };
-
   return (
     <div>
-      <h1 className="text-3xl font-bold text-gray-800 mb-6">Log Transaction</h1>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-6xl mx-auto">
-        {/* Form Card */}
-        <div className="bg-white p-8 rounded-xl shadow-md space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Rep Full Name</label>
-                <input type="text" value={repName} readOnly className="mt-1 w-full p-2 bg-gray-200 border border-gray-300 rounded-md cursor-not-allowed" />
-              </div>
-              <div>
-                <label htmlFor="client-name" className="block text-sm font-medium text-gray-700">Client Name</label>
-                <input id="client-name" type="text" value={clientName} onChange={handleClientNameChange} placeholder="Enter client name" disabled={items.length > 0} className="mt-1 w-full p-2 border border-gray-300 rounded-md focus:ring-brand-orange focus:border-brand-orange disabled:bg-gray-200" />
-              </div>
-              <div>
-                <label htmlFor="time-of-day" className="block text-sm font-medium text-gray-700">Time of Day</label>
-                <select id="time-of-day" value={timeOfDay} onChange={e => setTimeOfDay(e.target.value as 'AM' | 'PM')} disabled={items.length > 0} className="mt-1 w-full p-2 border border-gray-300 rounded-md focus:ring-brand-orange focus:border-brand-orange disabled:bg-gray-200">
-                    <option value="AM">AM</option>
-                    <option value="PM">PM</option>
-                </select>
-              </div>
-          </div>
-
-          <form onSubmit={handleAddItem} className="pt-6 border-t space-y-4">
-              <h2 className="text-lg font-semibold text-gray-800">Add Material</h2>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="rate-sheet" className="block text-sm font-medium text-gray-700">Rate Sheet</label>
-                  <select id="rate-sheet" value={rateSheet} onChange={e => setRateSheet(e.target.value)} className="mt-1 w-full p-2 border border-gray-300 rounded-md focus:ring-brand-orange focus:border-brand-orange">
-                    {Object.keys(RATE_SHEETS).map(r => <option key={r} value={r}>{r}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label htmlFor="material" className="block text-sm font-medium text-gray-700">Material</label>
-                  <select id="material" value={material} onChange={e => setMaterial(e.target.value)} className="mt-1 w-full p-2 border border-gray-300 rounded-md focus:ring-brand-orange focus:border-brand-orange">
-                    {RATE_SHEETS[rateSheet].map(m => <option key={m.type} value={m.type}>{m.type} (R{m.price}/kg)</option>)}
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label htmlFor="weight" className="block text-sm font-medium text-gray-700">Weight (kg)</label>
-                <input id="weight" type="number" step="0.01" value={weight} onChange={e => setWeight(e.target.value)} placeholder="0.00" required className="mt-1 w-full p-2 border border-gray-300 rounded-md focus:ring-brand-orange focus:border-brand-orange" />
-              </div>
-              <button type="submit" className="w-full flex justify-center items-center gap-2 py-3 px-4 font-semibold text-brand-orange bg-white border-2 border-dashed border-brand-orange rounded-lg hover:bg-orange-50 transition-colors">
-                <PlusIcon className="h-5 w-5" />
-                Add Material to Transaction
-              </button>
-          </form>
-        </div>
-
-        {/* Summary Card */}
-        <div className="bg-white p-8 rounded-xl shadow-md flex flex-col">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">Current Transaction Summary</h2>
-            <div className="flex-1 overflow-y-auto border-2 border-dashed border-gray-200 rounded-lg p-4">
-                {items.length === 0 ? (
-                    <p className="text-center text-gray-500 h-full flex items-center justify-center">No materials added yet.</p>
-                ) : (
-                    <ul className="space-y-3">
-                        {items.map((item, index) => (
-                            <li key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-md">
-                                <div>
-                                    <p className="font-semibold text-gray-800">{item.material}</p>
-                                    <p className="text-sm text-gray-500">{item.weight.toFixed(2)} kg @ R{item.pricePerKg.toFixed(2)}/kg</p>
-                                </div>
-                                <div className="flex items-center gap-4">
-                                    <p className="font-semibold text-brand-orange">R {item.total.toFixed(2)}</p>
-                                    <button onClick={() => handleRemoveItem(index)} className="text-gray-400 hover:text-red-500">
-                                        <TrashIcon className="h-5 w-5" />
-                                    </button>
-                                </div>
-                            </li>
-                        ))}
-                    </ul>
-                )}
+      <h1 className="text-3xl font-bold text-gray-800 mb-6">Log New Transaction</h1>
+      
+      <form onSubmit={handleSubmit} className="bg-white p-8 rounded-xl shadow-md space-y-6 max-w-4xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label htmlFor="repName" className="block text-sm font-medium text-gray-700">Representative Name</label>
+              <input id="repName" type="text" value={repName} disabled className="mt-1 block w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md shadow-sm focus:outline-none" />
             </div>
-            <div className="pt-6 border-t mt-4 space-y-4">
-                 <div className="text-center bg-orange-50 p-4 rounded-lg">
+            <div>
+              <label htmlFor="clientName" className="block text-sm font-medium text-gray-700">Client Name / Walk-in</label>
+              <input id="clientName" type="text" value={clientName} onChange={e => setClientName(e.target.value)} required className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:ring-brand-orange focus:border-brand-orange" />
+            </div>
+            <div>
+                <label htmlFor="transactionDate" className="block text-sm font-medium text-gray-700">Transaction Date</label>
+                <input
+                    id="transactionDate"
+                    type="date"
+                    value={transactionDate.toISOString().split('T')[0]}
+                    onChange={e => setTransactionDate(new Date(e.target.value))}
+                    required
+                    className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:ring-brand-orange focus:border-brand-orange"
+                />
+            </div>
+            <div>
+              <label htmlFor="rateSheet" className="block text-sm font-medium text-gray-700">Rate Sheet</label>
+              <select id="rateSheet" value={rateSheetKey} onChange={e => setRateSheetKey(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:ring-brand-orange focus:border-brand-orange">
+                {Object.keys(RATE_SHEETS).map(key => <option key={key} value={key}>{key}</option>)}
+              </select>
+            </div>
+        </div>
+        
+        <div className="pt-4 border-t border-gray-200">
+          <h2 className="text-xl font-semibold text-gray-700 mb-4">Materials</h2>
+          {items.map((item, index) => (
+            <div key={index} className="grid grid-cols-1 md:grid-cols-10 gap-4 items-end mb-4 p-4 bg-gray-50 rounded-lg">
+                <div className="md:col-span-3">
+                  <label htmlFor={`material-${index}`} className="block text-xs font-medium text-gray-600">Material</label>
+                  <select id={`material-${index}`} value={item.material} onChange={e => handleItemChange(index, 'material', e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:ring-brand-orange focus:border-brand-orange">
+                    <option value="">Select a material</option>
+                    {rateSheet.map(m => <option key={m.type} value={m.type}>{m.type}</option>)}
+                  </select>
+                </div>
+                <div className="md:col-span-2">
+                  <label htmlFor={`weight-${index}`} className="block text-xs font-medium text-gray-600">Weight (kg)</label>
+                  <input id={`weight-${index}`} type="number" step="0.01" value={item.weight} onChange={e => handleItemChange(index, 'weight', e.target.value)} placeholder="0.00" className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:ring-brand-orange focus:border-brand-orange" />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-medium text-gray-600">Price/kg</label>
+                  <p className="mt-1 px-3 py-2 text-gray-700">R {item.pricePerKg.toFixed(2)}</p>
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-medium text-gray-600">Total</label>
+                  <p className="mt-1 px-3 py-2 text-gray-800 font-semibold">R {item.total.toFixed(2)}</p>
+                </div>
+                <div className="md:col-span-1">
+                  <button type="button" onClick={() => removeItem(index)} disabled={items.length <= 1} className="w-full flex items-center justify-center p-2 text-red-500 rounded-md hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent">
+                    <TrashIcon className="h-6 w-6" />
+                  </button>
+                </div>
+            </div>
+          ))}
+          <button type="button" onClick={addItem} className="flex items-center gap-2 mt-2 px-4 py-2 text-sm font-medium text-white bg-brand-green rounded-md hover:opacity-90">
+            <PlusIcon className="h-5 w-5" />
+            Add Another Item
+          </button>
+        </div>
+        
+        <div className="pt-6 border-t border-gray-200">
+            <div className="flex justify-end items-center gap-6">
+                <div className="text-right">
                     <p className="text-lg text-gray-600">Grand Total</p>
-                    <p className="text-4xl font-bold text-brand-orange">R {grandTotal.toFixed(2)}</p>
-                 </div>
-                 {receiptData ? (
-                    <button onClick={handlePrintReceipt} className="w-full flex justify-center items-center gap-2 py-3 px-4 text-lg font-semibold text-white bg-brand-green rounded-lg shadow-md hover:opacity-90 transition-colors">
-                        <PrintIcon className="h-6 w-6" />
-                        Print Receipt
-                    </button>
-                  ) : (
-                    <button onClick={handleSaveAll} disabled={items.length === 0} className="w-full py-3 px-4 text-lg font-semibold text-white bg-brand-orange rounded-lg shadow-md hover:opacity-90 disabled:bg-gray-400 disabled:cursor-not-allowed">
-                        Complete & Save All ({items.length})
-                    </button>
-                  )}
-                 {message && <p className="text-center text-green-600 font-medium mt-2">{message}</p>}
+                    <p className="text-3xl font-bold text-brand-orange">R {grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                </div>
+                <button type="submit" disabled={isSubmitting} className="px-8 py-3 text-lg font-semibold text-white bg-brand-orange rounded-lg shadow-md hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-orange disabled:bg-gray-400">
+                  {isSubmitting ? 'Submitting...' : 'Log Transaction'}
+                </button>
             </div>
+            {submissionStatus && (
+              <p className={`mt-4 text-center font-medium ${submissionStatus.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+                {submissionStatus.message}
+              </p>
+            )}
         </div>
-      </div>
+      </form>
     </div>
   );
 }
