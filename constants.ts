@@ -27,6 +27,17 @@ export const RATE_SHEETS: RateSheet = {
     { type: "Cans", price: 15.5 },
     { type: "HDPE", price: 1.3 },
     { type: "C-oil", price: 1.0 }
+  ],
+  "ECT": [
+    { type: "PET Clear", price: 2.00 },
+    { type: "PET Green", price: 1.50 },
+    { type: "PET Brown", price: 1.30 },
+    { type: "C-oil", price: 1.00 },
+    { type: "HDPE", price: 1.30 },
+    { type: "Cans", price: 15.50 },
+    { type: "C-Plastic", price: 1.50 },
+    { type: "M-Plastic", price: 1.30 },
+    { type: "K4", price: 0.80 }
   ]
 };
 
