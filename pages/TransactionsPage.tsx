@@ -117,22 +117,21 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
                 <head>
                     <title>Transaction Receipt</title>
                     <style>
-                        body { font-family: sans-serif; margin: 20px; }
-                        .header { text-align: center; margin-bottom: 20px; border-bottom: 1px solid #ccc; padding-bottom: 10px;}
-                        .header h1 { margin: 0; }
-                        .info { margin-bottom: 20px; }
+                        body { font-family: sans-serif; margin: 20px; color: #333; }
+                        .info { margin-bottom: 20px; border-bottom: 1px dashed #ccc; padding-bottom: 15px; }
                         .info p { margin: 5px 0; }
                         table { width: 100%; border-collapse: collapse; }
-                        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-                        th { background-color: #f2f2f2; }
-                        .total { margin-top: 20px; text-align: right; font-size: 1.2em; font-weight: bold; }
-                        .footer { margin-top: 30px; text-align: center; font-size: 0.8em; color: #888; }
+                        th, td { padding: 10px 5px; text-align: left; border-bottom: 1px solid #eee; }
+                        th { font-weight: bold; color: #555; }
+                        thead th { border-bottom: 2px solid #333; }
+                        .align-right { text-align: right; }
+                        tfoot td { font-weight: bold; font-size: 1.1em; border-bottom: none; }
+                        tfoot .grand-total-label { text-align: right; padding-right: 10px; }
+                        .footer { margin-top: 30px; text-align: center; font-size: 0.9em; color: #888; }
+                        .footer p { margin: 4px 0; }
                     </style>
                 </head>
                 <body>
-                    <div class="header">
-                        <h1>Umvuzo Transaction Receipt</h1>
-                    </div>
                     <div class="info">
                         <p><strong>Date & Time:</strong> ${new Date().toLocaleString('en-ZA')}</p>
                         <p><strong>Rep Name:</strong> ${repName}</p>
@@ -142,27 +141,29 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
                         <thead>
                             <tr>
                                 <th>Material</th>
-                                <th>Weight (kg)</th>
-                                <th>Rate (R/kg)</th>
-                                <th>Total (R)</th>
+                                <th class="align-right">Kg</th>
+                                <th class="align-right">Total</th>
                             </tr>
                         </thead>
                         <tbody>
                             ${items.map(item => `
                                 <tr>
                                     <td>${item.material}</td>
-                                    <td>${item.weight.toFixed(2)}</td>
-                                    <td>R ${item.pricePerKg.toFixed(2)}</td>
-                                    <td>R ${item.total.toFixed(2)}</td>
+                                    <td class="align-right">${item.weight.toFixed(2)}</td>
+                                    <td class="align-right">R ${item.total.toFixed(2)}</td>
                                 </tr>
                             `).join('')}
                         </tbody>
+                        <tfoot>
+                            <tr>
+                                <td class="grand-total-label" colspan="2">Grand Total</td>
+                                <td class="align-right">R ${grandTotal.toFixed(2)}</td>
+                            </tr>
+                        </tfoot>
                     </table>
-                    <div class="total">
-                        <p>Grand Total: R ${grandTotal.toFixed(2)}</p>
-                    </div>
                     <div class="footer">
-                        <p>Umvuzo is powered by Isphepho.</p>
+                        <p>Thank you for your business</p>
+                        <p>Umvuzo is developed and powered by Isphepho</p>
                     </div>
                 </body>
             </html>
