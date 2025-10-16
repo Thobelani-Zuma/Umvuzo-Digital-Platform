@@ -202,12 +202,14 @@ export function AdminDashboardPage({ allTransactions }: { allTransactions: Trans
               className="flex items-center justify-center gap-2 py-2 px-4 font-semibold text-white bg-gray-700 rounded-lg shadow-md hover:bg-gray-800"
             >
               <EmailIcon className="h-5 w-5" />
+              Email
             </button>
             <button
               onClick={() => handleShare('whatsapp')}
               className="flex items-center justify-center gap-2 py-2 px-4 font-semibold text-white bg-green-600 rounded-lg shadow-md hover:bg-green-700"
             >
               <WhatsAppIcon className="h-5 w-5" />
+              WhatsApp
             </button>
         </div>
       </div>
