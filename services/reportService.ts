@@ -39,7 +39,14 @@ export const generateReportPDF = (type: 'daily' | 'monthly' | 'material' | 'admi
 
   filteredTransactions.forEach(tx => {
     tableRows.push([
-      new Date(tx.date).toLocaleDateString("en-ZA"),
+      new Date(tx.date).toLocaleString("en-ZA", {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute:'2-digit',
+        hour12: true
+      }),
       tx.repName,
       tx.clientName,
       tx.material,

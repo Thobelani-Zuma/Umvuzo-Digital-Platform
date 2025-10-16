@@ -15,7 +15,11 @@ interface DashboardLayoutProps {
   onLogout: () => void;
   transactions: Transaction[];
   allTransactions: TransactionData;
-  addMultipleTransactions: (items: Omit<Transaction, 'id' | 'date' | 'repName' | 'clientName' | 'userEmail'>[], clientName: string) => void;
+  addMultipleTransactions: (
+    items: Omit<Transaction, 'id' | 'date' | 'repName' | 'clientName' | 'userEmail'>[], 
+    clientName: string,
+    transactionDate: Date
+  ) => void;
 }
 
 const pageTitles: { [key in Page]?: string } = {

@@ -5,7 +5,11 @@ import { PlusIcon, TrashIcon, PrintIcon } from '../components/icons/Icons';
 
 interface TransactionsPageProps {
   repName: string;
-  addMultipleTransactions: (items: Omit<Transaction, 'id' | 'date' | 'repName' | 'clientName' | 'userEmail'>[], clientName: string) => void;
+  addMultipleTransactions: (
+    items: Omit<Transaction, 'id' | 'date' | 'repName' | 'clientName' | 'userEmail'>[], 
+    clientName: string,
+    transactionDate: Date
+  ) => void;
 }
 
 type TransactionItem = Omit<Transaction, 'id' | 'date' | 'repName' | 'clientName' | 'userEmail'>;
@@ -17,7 +21,8 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
   const [weight, setWeight] = useState('');
   const [items, setItems] = useState<TransactionItem[]>([]);
   const [message, setMessage] = useState('');
-  const [receiptData, setReceiptData] = useState<{ items: TransactionItem[], clientName: string, repName: string, grandTotal: number } | null>(null);
+  const [timeOfDay, setTimeOfDay] = useState<'AM' | 'PM'>('AM');
+  const [receiptData, setReceiptData] = useState<{ items: TransactionItem[], clientName: string, repName: string, grandTotal: number, date: Date } | null>(null);
   
   useEffect(() => {
     setMaterial(RATE_SHEETS[rateSheet][0].type);
@@ -61,8 +66,16 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
 
   const handleSaveAll = () => {
     if (items.length === 0) return;
-    addMultipleTransactions(items, clientName.trim());
-    setReceiptData({ items, clientName: clientName.trim(), repName, grandTotal });
+    
+    const transactionDate = new Date();
+    if (timeOfDay === 'AM') {
+        transactionDate.setHours(10, 0, 0, 0); // Set to 10:00 AM
+    } else {
+        transactionDate.setHours(14, 0, 0, 0); // Set to 2:00 PM
+    }
+
+    addMultipleTransactions(items, clientName.trim(), transactionDate);
+    setReceiptData({ items, clientName: clientName.trim(), repName, grandTotal, date: transactionDate });
     setItems([]);
     setClientName('');
     setMessage(`${items.length} transaction(s) saved. You can now print the receipt.`);
@@ -71,7 +84,7 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
   const handlePrintReceipt = () => {
     if (!receiptData) return;
 
-    const { items, clientName, repName, grandTotal } = receiptData;
+    const { items, clientName, repName, grandTotal, date } = receiptData;
 
     const receiptContent = `
         <html>
@@ -105,7 +118,7 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
                     <p>Customer Receipt</p>
                 </div>
                 <div class="info">
-                    <p><strong>Date:</strong> ${new Date().toLocaleString()}</p>
+                    <p><strong>Date:</strong> ${date.toLocaleString('en-ZA')}</p>
                     <p><strong>Client:</strong> ${clientName}</p>
                     <p><strong>Rep:</strong> ${repName}</p>
                 </div>
@@ -163,7 +176,7 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-6xl mx-auto">
         {/* Form Card */}
         <div className="bg-white p-8 rounded-xl shadow-md space-y-6">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">Rep Name</label>
                 <input type="text" value={repName} readOnly className="mt-1 w-full p-2 bg-gray-200 border border-gray-300 rounded-md cursor-not-allowed" />
@@ -171,6 +184,13 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
               <div>
                 <label htmlFor="client-name" className="block text-sm font-medium text-gray-700">Client Name</label>
                 <input id="client-name" type="text" value={clientName} onChange={handleClientNameChange} placeholder="Enter client name" disabled={items.length > 0} className="mt-1 w-full p-2 border border-gray-300 rounded-md focus:ring-brand-orange focus:border-brand-orange disabled:bg-gray-200" />
+              </div>
+              <div>
+                <label htmlFor="time-of-day" className="block text-sm font-medium text-gray-700">Time of Day</label>
+                <select id="time-of-day" value={timeOfDay} onChange={e => setTimeOfDay(e.target.value as 'AM' | 'PM')} disabled={items.length > 0} className="mt-1 w-full p-2 border border-gray-300 rounded-md focus:ring-brand-orange focus:border-brand-orange disabled:bg-gray-200">
+                    <option value="AM">AM</option>
+                    <option value="PM">PM</option>
+                </select>
               </div>
           </div>
 
