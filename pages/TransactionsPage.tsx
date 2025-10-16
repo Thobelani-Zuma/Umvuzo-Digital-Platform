@@ -21,6 +21,7 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
   const [weight, setWeight] = useState('');
   const [items, setItems] = useState<TransactionItem[]>([]);
   const [message, setMessage] = useState('');
+  const [transactionDateInput, setTransactionDateInput] = useState(new Date().toISOString().split('T')[0]);
   const [timeOfDay, setTimeOfDay] = useState<'AM' | 'PM'>('AM');
   const [receiptData, setReceiptData] = useState<{ items: TransactionItem[], clientName: string, repName: string, grandTotal: number, date: Date } | null>(null);
   
@@ -67,15 +68,17 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
   const handleSaveAll = () => {
     if (items.length === 0) return;
     
-    const transactionDate = new Date();
+    // Create a date object in the local timezone from the input string
+    const finalDate = new Date(`${transactionDateInput}T00:00:00`);
+
     if (timeOfDay === 'AM') {
-        transactionDate.setHours(10, 0, 0, 0); // Set to 10:00 AM
+        finalDate.setHours(10, 0, 0, 0); // Set to 10:00 AM
     } else {
-        transactionDate.setHours(14, 0, 0, 0); // Set to 2:00 PM
+        finalDate.setHours(14, 0, 0, 0); // Set to 2:00 PM
     }
 
-    addMultipleTransactions(items, clientName.trim(), transactionDate);
-    setReceiptData({ items, clientName: clientName.trim(), repName, grandTotal, date: transactionDate });
+    addMultipleTransactions(items, clientName.trim(), finalDate);
+    setReceiptData({ items, clientName: clientName.trim(), repName, grandTotal, date: finalDate });
     setItems([]);
     setClientName('');
     setMessage(`${items.length} transaction(s) saved. You can now print the receipt.`);
@@ -176,7 +179,7 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-6xl mx-auto">
         {/* Form Card */}
         <div className="bg-white p-8 rounded-xl shadow-md space-y-6">
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700">Rep Name</label>
                 <input type="text" value={repName} readOnly className="mt-1 w-full p-2 bg-gray-200 border border-gray-300 rounded-md cursor-not-allowed" />
@@ -184,6 +187,17 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
               <div>
                 <label htmlFor="client-name" className="block text-sm font-medium text-gray-700">Client Name</label>
                 <input id="client-name" type="text" value={clientName} onChange={handleClientNameChange} placeholder="Enter client name" disabled={items.length > 0} className="mt-1 w-full p-2 border border-gray-300 rounded-md focus:ring-brand-orange focus:border-brand-orange disabled:bg-gray-200" />
+              </div>
+              <div>
+                <label htmlFor="transaction-date" className="block text-sm font-medium text-gray-700">Transaction Date</label>
+                <input 
+                    id="transaction-date" 
+                    type="date" 
+                    value={transactionDateInput} 
+                    onChange={e => setTransactionDateInput(e.target.value)} 
+                    disabled={items.length > 0}
+                    className="mt-1 w-full p-2 border border-gray-300 rounded-md focus:ring-brand-orange focus:border-brand-orange disabled:bg-gray-200" 
+                />
               </div>
               <div>
                 <label htmlFor="time-of-day" className="block text-sm font-medium text-gray-700">Time of Day</label>
