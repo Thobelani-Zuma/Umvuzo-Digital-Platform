@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Transaction } from '../types';
 import { generateReportPDF } from '../services/reportService';
-import { ReportIcon } from '../components/icons/Icons';
+import { ReportIcon, EmailIcon, WhatsAppIcon } from '../components/icons/Icons';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { RATE_SHEETS } from '../constants';
 
@@ -21,6 +21,18 @@ export function ReportsPage({ transactions }: ReportsPageProps) {
 
   const handleGenerateReport = (type: 'daily' | 'weekly' | 'monthly' | 'material') => {
     generateReportPDF(type, filteredTransactions, undefined, selectedRateSheet);
+  };
+  
+  const handleShare = (platform: 'email' | 'whatsapp') => {
+    const subject = "Umvuzo Report";
+    const emailBody = "Hi,\n\nPlease see the attached Umvuzo report.\n\n(This email was pre-filled. Please attach the PDF report you downloaded from the app).\n\nSent from the Umvuzo Digital Platform.";
+    const whatsappText = "Hi, I'm sharing an Umvuzo report with you. I will send the PDF file next. (Sent from the Umvuzo Digital Platform)";
+
+    if (platform === 'email') {
+        window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(emailBody)}`;
+    } else {
+        window.open(`https://wa.me/?text=${encodeURIComponent(whatsappText)}`, '_blank');
+    }
   };
 
   const materialTotals = filteredTransactions.reduce((acc, tx) => {
@@ -99,7 +111,21 @@ export function ReportsPage({ transactions }: ReportsPageProps) {
             Download Full Material Report
           </button>
         </div>
-        <p className="mt-6 text-center text-gray-500">Reports will be downloaded as PDF files.</p>
+        
+        <div className="mt-6 pt-6 border-t">
+          <h3 className="text-lg font-semibold text-gray-700 mb-3 text-center">Share Report</h3>
+          <p className="text-center text-sm text-gray-500 mb-4">First, download a report, then use an option below to share the file.</p>
+          <div className="flex justify-center gap-4">
+              <button onClick={() => handleShare('email')} className="flex items-center gap-2 py-2 px-4 rounded-lg bg-gray-700 text-white hover:bg-gray-800 transition-colors">
+                  <EmailIcon className="h-5 w-5" />
+                  Email
+              </button>
+              <button onClick={() => handleShare('whatsapp')} className="flex items-center gap-2 py-2 px-4 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors">
+                  <WhatsAppIcon className="h-5 w-5" />
+                  WhatsApp
+              </button>
+          </div>
+        </div>
       </div>
     </div>
   );

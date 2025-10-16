@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { TransactionData } from '../types';
-import { PayoutIcon, WeightIcon, UsersIcon, SearchIcon, ReportIcon, CashIcon } from '../components/icons/Icons';
+import { PayoutIcon, WeightIcon, UsersIcon, SearchIcon, ReportIcon, CashIcon, EmailIcon, WhatsAppIcon } from '../components/icons/Icons';
 import { generateReportPDF } from '../services/reportService';
 import { db } from '../services/firebase';
 import { RATE_SHEETS } from '../constants';
@@ -153,6 +153,19 @@ export function AdminDashboardPage({ allTransactions }: { allTransactions: Trans
           closing: calculatedClosingBalance,
       }, selectedRateSheet);
   };
+  
+  const handleShare = (platform: 'email' | 'whatsapp') => {
+    const subject = "Umvuzo Admin Report";
+    const emailBody = "Hi,\n\nPlease see the attached Umvuzo report.\n\n(This email was pre-filled. Please download the desired report from the admin panel and attach it to this email).\n\nSent from the Umvuzo Digital Platform.";
+    const whatsappText = "Hi, I'm sharing an Umvuzo admin report with you. I will send the PDF file next. (Sent from the Umvuzo Digital Platform)";
+
+    if (platform === 'email') {
+        window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(emailBody)}`;
+    } else {
+        window.open(`https://wa.me/?text=${encodeURIComponent(whatsappText)}`, '_blank');
+    }
+  };
+
 
   return (
     <div>
@@ -175,14 +188,26 @@ export function AdminDashboardPage({ allTransactions }: { allTransactions: Trans
               className="flex items-center justify-center gap-2 py-2 px-4 font-semibold text-white bg-brand-green rounded-lg shadow-md hover:opacity-90"
             >
               <ReportIcon className="h-5 w-5" />
-              Download Weekly Report
+              Download Weekly
             </button>
             <button
               onClick={handleDownloadReport}
               className="flex items-center justify-center gap-2 py-2 px-4 font-semibold text-white bg-brand-orange rounded-lg shadow-md hover:opacity-90"
             >
               <ReportIcon className="h-5 w-5" />
-              Download Full Report
+              Download Full
+            </button>
+            <button
+              onClick={() => handleShare('email')}
+              className="flex items-center justify-center gap-2 py-2 px-4 font-semibold text-white bg-gray-700 rounded-lg shadow-md hover:bg-gray-800"
+            >
+              <EmailIcon className="h-5 w-5" />
+            </button>
+            <button
+              onClick={() => handleShare('whatsapp')}
+              className="flex items-center justify-center gap-2 py-2 px-4 font-semibold text-white bg-green-600 rounded-lg shadow-md hover:bg-green-700"
+            >
+              <WhatsAppIcon className="h-5 w-5" />
             </button>
         </div>
       </div>
