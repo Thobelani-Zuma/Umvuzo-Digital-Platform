@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { GoogleGenAI } from '@google/genai';
 import { Transaction } from '../types';
 import { RATE_SHEETS } from '../constants';
-import { PlusIcon, TrashIcon, PrintIcon } from '../components/icons/Icons';
+import { PlusIcon, TrashIcon, PrintIcon, ScaleIcon, CameraIcon } from '../components/icons/Icons';
 
 interface TransactionsPageProps {
   repName: string;
@@ -13,6 +14,9 @@ interface TransactionsPageProps {
 }
 
 type TransactionItem = Omit<Transaction, 'id' | 'date' | 'repName' | 'clientName' | 'userEmail'>;
+
+type ScaleStatus = 'idle' | 'fetching' | 'success' | 'error';
+type ScanStatus = 'idle' | 'scanning' | 'success' | 'error';
 
 export function TransactionsPage({ repName, addMultipleTransactions }: TransactionsPageProps) {
   // State for the overall transaction
@@ -28,6 +32,18 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
   // State for submission feedback
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [status, setStatus] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  
+  // State for scale connection
+  const [scaleStatus, setScaleStatus] = useState<ScaleStatus>('idle');
+  const [scaleError, setScaleError] = useState<string | null>(null);
+
+  // State for camera scanning
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [stream, setStream] = useState<MediaStream | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [scanStatus, setScanStatus] = useState<ScanStatus>('idle');
+  const [scanError, setScanError] = useState<string | null>(null);
 
   const rateSheet = RATE_SHEETS[rateSheetKey];
 
@@ -102,6 +118,115 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
       setStatus({ message: 'Failed to save transaction. Please try again.', type: 'error' });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+  
+  const handleGetWeight = async () => {
+    setScaleStatus('fetching');
+    setScaleError(null);
+    try {
+      const response = await fetch('http://localhost:12345/weight');
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+      const data = await response.json();
+      if (typeof data.weight === 'number') {
+        setWeight(data.weight.toString());
+        setScaleStatus('success');
+      } else {
+        throw new Error('Invalid weight data received');
+      }
+    } catch (err) {
+      console.error('Failed to fetch weight from scale service:', err);
+      setScaleStatus('error');
+      setScaleError('Connection failed. Is the scale service running?');
+    }
+  };
+
+  const openCamera = async () => {
+    setScanStatus('idle');
+    setScanError(null);
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+    }
+    try {
+        const mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        setStream(mediaStream);
+        setIsCameraOpen(true);
+    } catch (err) {
+        console.error("Error accessing camera:", err);
+        setScanStatus('error');
+        setScanError('Could not access camera. Please check permissions.');
+    }
+  };
+
+  useEffect(() => {
+    if (isCameraOpen && stream && videoRef.current) {
+        videoRef.current.srcObject = stream;
+    }
+  }, [isCameraOpen, stream]);
+
+  const closeCamera = () => {
+    if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+    }
+    setStream(null);
+    setIsCameraOpen(false);
+  };
+
+  const scanImageForWeight = async (base64Image: string) => {
+    setScanStatus('scanning');
+    setScanError(null);
+    try {
+        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: {
+                parts: [
+                    {
+                        inlineData: {
+                            mimeType: 'image/jpeg',
+                            data: base64Image,
+                        },
+                    },
+                    {
+                        text: 'Extract the numerical weight value from this image of a scale display. Respond with only the number, with no units or extra text. For example: 12.34',
+                    },
+                ],
+            },
+        });
+        
+        const extractedText = response.text.trim();
+        const weightValue = parseFloat(extractedText);
+        
+        if (!isNaN(weightValue) && weightValue > 0) {
+            setWeight(weightValue.toString());
+            setScanStatus('success');
+        } else {
+            setScanStatus('error');
+            setScanError("Could not detect a valid weight. Please try again.");
+        }
+    } catch (error) {
+        console.error("Error scanning image for weight:", error);
+        setScanStatus('error');
+        setScanError("Failed to scan image. Please try again.");
+    }
+  };
+
+  const capturePhoto = () => {
+    if (videoRef.current && canvasRef.current) {
+        const video = videoRef.current;
+        const canvas = canvasRef.current;
+        const context = canvas.getContext('2d');
+        if (context) {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
+            const dataUrl = canvas.toDataURL('image/jpeg');
+            const base64Data = dataUrl.split(',')[1];
+            scanImageForWeight(base64Data);
+            closeCamera();
+        }
     }
   };
 
@@ -226,7 +351,23 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
               </div>
               <div className="md:col-span-2">
                 <label htmlFor="weight" className="block text-sm font-medium text-gray-700">Weight (kg)</label>
-                <input type="number" step="0.01" id="weight" value={weight} onChange={e => setWeight(e.target.value)} placeholder="0.00" className="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-brand-orange focus:border-brand-orange" />
+                <div className="mt-1 flex gap-2">
+                    <input type="number" step="0.01" id="weight" value={weight} onChange={e => setWeight(e.target.value)} placeholder="0.00" className="flex-grow p-2 border border-gray-300 rounded-md focus:ring-brand-orange focus:border-brand-orange" />
+                    <button onClick={handleGetWeight} disabled={scaleStatus === 'fetching'} title="Get Weight from Scale" className="flex-shrink-0 flex items-center justify-center p-3 font-semibold text-gray-700 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-wait">
+                        <ScaleIcon className="h-5 w-5" />
+                    </button>
+                    <button onClick={openCamera} disabled={scanStatus === 'scanning'} title="Scan Weight from Image" className="flex-shrink-0 flex items-center justify-center p-3 font-semibold text-gray-700 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-wait">
+                        <CameraIcon className="h-5 w-5" />
+                    </button>
+                </div>
+                <div className="h-4 mt-1 text-xs">
+                    {scaleStatus === 'fetching' && <p className="text-blue-600">Fetching weight...</p>}
+                    {scaleStatus === 'success' && <p className="text-green-600">Weight captured successfully.</p>}
+                    {scaleStatus === 'error' && <p className="text-red-600">{scaleError}</p>}
+                    {scanStatus === 'scanning' && <p className="text-blue-600">Scanning image for weight...</p>}
+                    {scanStatus === 'success' && <p className="text-green-600">Weight scanned successfully.</p>}
+                    {scanStatus === 'error' && <p className="text-red-600">{scanError}</p>}
+                </div>
               </div>
             </div>
              <button onClick={handleAddItem} className="mt-4 w-full flex items-center justify-center gap-2 py-3 px-4 font-semibold text-brand-orange border-2 border-dashed border-brand-orange rounded-lg hover:bg-orange-50 transition-colors">
@@ -291,6 +432,26 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
             </div>
         </div>
       </div>
+      
+      {isCameraOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+            <div className="bg-white p-4 rounded-lg shadow-xl relative max-w-lg w-full">
+                <h3 className="text-lg font-bold mb-4 text-center">Scan Weight from Scale</h3>
+                <div className="bg-gray-200 rounded-md overflow-hidden">
+                    <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover"></video>
+                </div>
+                <canvas ref={canvasRef} className="hidden"></canvas>
+                <div className="mt-4 grid grid-cols-2 gap-3">
+                    <button onClick={closeCamera} className="w-full py-3 px-4 text-lg font-semibold text-gray-700 bg-gray-200 rounded-lg shadow-md hover:bg-gray-300 transition-colors">
+                        Cancel
+                    </button>
+                    <button onClick={capturePhoto} className="w-full py-3 px-4 text-lg font-semibold text-white bg-brand-orange rounded-lg shadow-md hover:opacity-90 transition-colors">
+                        Capture
+                    </button>
+                </div>
+            </div>
+        </div>
+      )}
     </div>
   );
 }
