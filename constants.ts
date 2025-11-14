@@ -12,7 +12,7 @@ export const RATE_SHEETS: RateSheet = {
     { type: "C-plastic", price: 2.00 },
     { type: "M-plastic", price: 1.00 },
     { type: "W-paper", price: 1.0 },
-    { type: "K4", price: 0.8 },
+    { type: "K4", price: 0.20 },
     { type: "TetraPak", price: 0.5 },
     { type: "PP", price: 0.2 },
     { type: "Glass bottles", price: 0.2 }
