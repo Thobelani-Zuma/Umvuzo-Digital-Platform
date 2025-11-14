@@ -110,7 +110,13 @@ export const generateReportPDF = (
       doc.text(`Total Kg (for report period): ${totalKg.toFixed(2)} kg`, 14, finalY + 43);
   } else {
       doc.text(`Total Paid: R ${totalPaid.toFixed(2)}`, 14, finalY + 15);
-      doc.text(`Total Kg: ${totalKg.toFixed(2)} kg`, 14, finalY + 22);
+      if (type === 'daily' || type === 'weekly' || type === 'monthly') {
+          const roundedTotalPaid = Math.round(totalPaid / 10) * 10;
+          doc.text(`Total Paid (Rounded to nearest 10): R ${roundedTotalPaid.toFixed(2)}`, 14, finalY + 22);
+          doc.text(`Total Kg: ${totalKg.toFixed(2)} kg`, 14, finalY + 29);
+      } else {
+          doc.text(`Total Kg: ${totalKg.toFixed(2)} kg`, 14, finalY + 22);
+      }
   }
   
   if (outputType === 'blob') {
