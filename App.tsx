@@ -7,7 +7,8 @@ import { auth, db } from './services/firebase';
 export function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [activePage, setActivePage] = useState<Page>(Page.Dashboard);
-  const [transactionsByUser, setTransactionsByUser] = useState<TransactionData>({});
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [allTransactions, setAllTransactions] = useState<TransactionData>({});
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
@@ -33,47 +34,46 @@ export function App() {
 
   useEffect(() => {
     if (!currentUser) {
-      setTransactionsByUser({});
+      setTransactions([]);
+      setAllTransactions({});
       return;
     }
 
-    // FIX: Switched to Firebase v8 namespaced API for Firestore queries
     const transactionsCol = db.collection('transactions');
-    let q;
+    let query;
+
     if (currentUser.role === 'admin') {
-      // FIX: Switched to Firebase v8 namespaced API for Firestore queries
-      q = transactionsCol.orderBy('date', 'desc');
-    } else {
-      // FIX: Switched to Firebase v8 namespaced API for Firestore queries
-      q = transactionsCol.where('userEmail', '==', currentUser.email).orderBy('date', 'desc');
-    }
-
-    // FIX: Switched to Firebase v8 namespaced API for Firestore queries
-    const unsubscribe = q.onSnapshot((querySnapshot) => {
-      const allTransactions: Transaction[] = [];
-      querySnapshot.forEach((doc) => {
-        // Make sure to include the document ID
-        allTransactions.push({ ...doc.data(), id: doc.id } as Transaction);
-      });
-
-      if (currentUser.role === 'admin') {
-        const groupedByEmail = allTransactions.reduce((acc, tx) => {
+      query = transactionsCol.orderBy('date', 'desc');
+      const unsubscribe = query.onSnapshot((querySnapshot) => {
+        const fetchedTransactions: Transaction[] = [];
+        querySnapshot.forEach((doc) => {
+          fetchedTransactions.push({ ...doc.data(), id: doc.id } as Transaction);
+        });
+        const grouped = fetchedTransactions.reduce((acc, tx) => {
           const email = tx.userEmail || 'unknown';
-          if (!acc[email]) {
-            acc[email] = [];
-          }
+          if (!acc[email]) acc[email] = [];
           acc[email].push(tx);
           return acc;
         }, {} as TransactionData);
-        setTransactionsByUser(groupedByEmail);
-      } else {
-        setTransactionsByUser({ [currentUser.email]: allTransactions });
-      }
-    }, (error) => {
-      console.error("Error fetching transactions: ", error);
-    });
+        setAllTransactions(grouped);
+      }, (error) => {
+        console.error("Error fetching transactions: ", error);
+      });
+      return unsubscribe;
 
-    return () => unsubscribe();
+    } else { // role is 'rep'
+      query = transactionsCol.where('userEmail', '==', currentUser.email).orderBy('date', 'desc');
+      const unsubscribe = query.onSnapshot((querySnapshot) => {
+        const fetchedTransactions: Transaction[] = [];
+        querySnapshot.forEach((doc) => {
+          fetchedTransactions.push({ ...doc.data(), id: doc.id } as Transaction);
+        });
+        setTransactions(fetchedTransactions);
+      }, (error) => {
+        console.error("Error fetching transactions: ", error);
+      });
+      return unsubscribe;
+    }
   }, [currentUser]);
 
 
@@ -134,8 +134,6 @@ export function App() {
         await transactionCollection.add(tx);
       }
   };
-
-  const userTransactions = currentUser && currentUser.role === 'rep' ? transactionsByUser[currentUser.email] || [] : [];
   
   if (isLoading) {
     return (
@@ -155,8 +153,8 @@ export function App() {
           activePage={activePage}
           setActivePage={setActivePage}
           onLogout={handleLogout}
-          transactions={userTransactions}
-          allTransactions={transactionsByUser}
+          transactions={transactions}
+          allTransactions={allTransactions}
           addMultipleTransactions={addMultipleTransactions}
         />
       ) : (
