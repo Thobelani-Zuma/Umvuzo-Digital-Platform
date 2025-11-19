@@ -5,7 +5,6 @@ export const RATE_SHEETS: RateSheet = {
     { type: "PET Clear", price: 3.60 },
     { type: "PET Green", price: 3.00 },
     { type: "PET Brown", price: 1.8 },
-    { type: "C-oil", price: 1.3 },
     { type: "HDPE", price: 2.00 },
     { type: "Tins", price: 0.80 },
     { type: "Cans", price: 16.50 },
