@@ -238,7 +238,6 @@ export function AdminDashboardPage({ allTransactions }: { allTransactions: Trans
     }
   };
 
-
   return (
     <div>
       <div className="flex flex-wrap justify-between items-center mb-6 gap-4">
@@ -377,35 +376,32 @@ export function AdminDashboardPage({ allTransactions }: { allTransactions: Trans
         </div>
         <div className="overflow-x-auto max-h-[450px]">
             <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50 sticky top-0 z-10">
+                <thead className="bg-gray-50 sticky top-0">
                     <tr>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rep Name</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rep</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Material</th>
                         <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Weight (kg)</th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total Paid</th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
                     </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                     {filteredTransactions.map(tx => (
                         <tr key={tx.id}>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(tx.date).toLocaleDateString()}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{tx.repName}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(tx.date).toLocaleString()}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">{tx.repName}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{tx.clientName}</td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{tx.material}</td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">{tx.weight.toFixed(2)}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-brand-orange font-semibold text-right">R {tx.total.toFixed(2)}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold text-right">R {tx.total.toFixed(2)}</td>
                         </tr>
                     ))}
-                     {filteredTransactions.length === 0 && (
-                        <tr>
-                            <td colSpan={5} className="text-center py-8 text-gray-500">No transactions found.</td>
-                        </tr>
-                    )}
                 </tbody>
                 <tfoot className="bg-gray-100 sticky bottom-0">
                     <tr>
-                        <td colSpan={4} className="px-6 py-3 text-right text-sm font-bold text-gray-800 uppercase tracking-wider">Overall Total</td>
-                        <td className="px-6 py-3 whitespace-nowrap text-base text-brand-orange font-bold text-right">R {filteredTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        <td colSpan={5} className="px-6 py-3 text-right text-sm font-bold text-gray-700 uppercase">Filtered Total:</td>
+                        <td className="px-6 py-3 text-right text-sm font-bold text-gray-900">R {filteredTotal.toFixed(2)}</td>
                     </tr>
                 </tfoot>
             </table>
