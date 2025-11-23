@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { GoogleGenAI } from 'https://aistudiocdn.com/google-genai-v0.15.0/index.js';
+import { GoogleGenAI } from '@google/genai';
 import { Transaction } from '../types';
 import { RATE_SHEETS } from '../constants';
 import { PlusIcon, TrashIcon, PrintIcon, ScaleIcon, CameraIcon } from '../components/icons/Icons';
@@ -196,8 +196,8 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
             },
         });
         
-        const extractedText = response.text.trim();
-        const weightValue = parseFloat(extractedText);
+        const extractedText = response.text?.trim();
+        const weightValue = extractedText ? parseFloat(extractedText) : NaN;
         
         if (!isNaN(weightValue) && weightValue > 0) {
             setWeight(weightValue.toString());
@@ -306,27 +306,27 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
 
   return (
     <div>
-      <h1 className="text-3xl font-bold text-gray-800 mb-6">Log Transaction</h1>
+      <h1 class="text-3xl font-bold text-gray-800 mb-6">Log Transaction</h1>
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+      <div class="grid grid-cols-1 lg:grid-cols-5 gap-8">
         {/* Left Panel: Form */}
-        <div className="lg:col-span-3 bg-white p-6 rounded-xl shadow-md space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="lg:col-span-3 bg-white p-6 rounded-xl shadow-md space-y-6">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label htmlFor="repName" className="block text-sm font-medium text-gray-700">Rep Name</label>
-              <input id="repName" type="text" value={repName} disabled className="mt-1 block w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md" />
+              <label htmlFor="repName" class="block text-sm font-medium text-gray-700">Rep Name</label>
+              <input id="repName" type="text" value={repName} disabled class="mt-1 block w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md" />
             </div>
             <div>
-              <label htmlFor="clientName" className="block text-sm font-medium text-gray-700">Client Name</label>
-              <input id="clientName" type="text" placeholder="Enter client name" value={clientName} onChange={e => setClientName(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-brand-orange focus:border-brand-orange" />
+              <label htmlFor="clientName" class="block text-sm font-medium text-gray-700">Client Name</label>
+              <input id="clientName" type="text" placeholder="Enter client name" value={clientName} onChange={e => setClientName(e.target.value)} class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-brand-orange focus:border-brand-orange" />
             </div>
-            <div className="md:col-span-2">
-                <label htmlFor="timeOfDay" className="block text-sm font-medium text-gray-700">Time of Day</label>
+            <div class="md:col-span-2">
+                <label htmlFor="timeOfDay" class="block text-sm font-medium text-gray-700">Time of Day</label>
                 <select 
                     id="timeOfDay" 
                     value={timeOfDay} 
                     onChange={e => setTimeOfDay(e.target.value as 'AM' | 'PM')}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-brand-orange focus:border-brand-orange"
+                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-brand-orange focus:border-brand-orange"
                 >
                     <option value="AM">AM</option>
                     <option value="PM">PM</option>
@@ -334,67 +334,67 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
             </div>
           </div>
           
-          <div className="pt-6 border-t">
-            <h2 className="text-xl font-semibold text-gray-700">Add Material</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+          <div class="pt-6 border-t">
+            <h2 class="text-xl font-semibold text-gray-700">Add Material</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
               <div>
-                <label htmlFor="rateSheet" className="block text-sm font-medium text-gray-700">Rate Sheet</label>
-                <select id="rateSheet" value={rateSheetKey} onChange={e => setRateSheetKey(e.target.value)} className="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-brand-orange focus:border-brand-orange">
+                <label htmlFor="rateSheet" class="block text-sm font-medium text-gray-700">Rate Sheet</label>
+                <select id="rateSheet" value={rateSheetKey} onChange={e => setRateSheetKey(e.target.value)} class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-brand-orange focus:border-brand-orange">
                     {Object.keys(RATE_SHEETS).map(sheet => <option key={sheet} value={sheet}>{sheet}</option>)}
                 </select>
               </div>
               <div>
-                <label htmlFor="material" className="block text-sm font-medium text-gray-700">Material</label>
-                <select id="material" value={material} onChange={e => setMaterial(e.target.value)} className="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-brand-orange focus:border-brand-orange">
+                <label htmlFor="material" class="block text-sm font-medium text-gray-700">Material</label>
+                <select id="material" value={material} onChange={e => setMaterial(e.target.value)} class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-brand-orange focus:border-brand-orange">
                     {rateSheet.map(m => <option key={m.type} value={m.type}>{`${m.type} (R${m.price.toFixed(1)}/kg)`}</option>)}
                 </select>
               </div>
-              <div className="md:col-span-2">
-                <label htmlFor="weight" className="block text-sm font-medium text-gray-700">Weight (kg)</label>
-                <div className="mt-1 flex gap-2">
-                    <input type="number" step="0.01" id="weight" value={weight} onChange={e => setWeight(e.target.value)} placeholder="0.00" className="flex-grow p-2 border border-gray-300 rounded-md focus:ring-brand-orange focus:border-brand-orange" />
-                    <button onClick={handleGetWeight} disabled={scaleStatus === 'fetching'} title="Get Weight from Scale" className="flex-shrink-0 flex items-center justify-center p-3 font-semibold text-gray-700 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-wait">
-                        <ScaleIcon className="h-5 w-5" />
+              <div class="md:col-span-2">
+                <label htmlFor="weight" class="block text-sm font-medium text-gray-700">Weight (kg)</label>
+                <div class="mt-1 flex gap-2">
+                    <input type="number" step="0.01" id="weight" value={weight} onChange={e => setWeight(e.target.value)} placeholder="0.00" class="flex-grow p-2 border border-gray-300 rounded-md focus:ring-brand-orange focus:border-brand-orange" />
+                    <button onClick={handleGetWeight} disabled={scaleStatus === 'fetching'} title="Get Weight from Scale" class="flex-shrink-0 flex items-center justify-center p-3 font-semibold text-gray-700 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-wait">
+                        <ScaleIcon class="h-5 w-5" />
                     </button>
-                    <button onClick={openCamera} disabled={scanStatus === 'scanning'} title="Scan Weight from Image" className="flex-shrink-0 flex items-center justify-center p-3 font-semibold text-gray-700 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-wait">
-                        <CameraIcon className="h-5 w-5" />
+                    <button onClick={openCamera} disabled={scanStatus === 'scanning'} title="Scan Weight from Image" class="flex-shrink-0 flex items-center justify-center p-3 font-semibold text-gray-700 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-wait">
+                        <CameraIcon class="h-5 w-5" />
                     </button>
                 </div>
-                <div className="h-4 mt-1 text-xs">
-                    {scaleStatus === 'fetching' && <p className="text-blue-600">Fetching weight...</p>}
-                    {scaleStatus === 'success' && <p className="text-green-600">Weight captured successfully.</p>}
-                    {scaleStatus === 'error' && <p className="text-red-600">{scaleError}</p>}
-                    {scanStatus === 'scanning' && <p className="text-blue-600">Scanning image for weight...</p>}
-                    {scanStatus === 'success' && <p className="text-green-600">Weight scanned successfully.</p>}
-                    {scanStatus === 'error' && <p className="text-red-600">{scanError}</p>}
+                <div class="h-4 mt-1 text-xs">
+                    {scaleStatus === 'fetching' && <p class="text-blue-600">Fetching weight...</p>}
+                    {scaleStatus === 'success' && <p class="text-green-600">Weight captured successfully.</p>}
+                    {scaleStatus === 'error' && <p class="text-red-600">{scaleError}</p>}
+                    {scanStatus === 'scanning' && <p class="text-blue-600">Scanning image for weight...</p>}
+                    {scanStatus === 'success' && <p class="text-green-600">Weight scanned successfully.</p>}
+                    {scanStatus === 'error' && <p class="text-red-600">{scanError}</p>}
                 </div>
               </div>
             </div>
-             <button onClick={handleAddItem} className="mt-4 w-full flex items-center justify-center gap-2 py-3 px-4 font-semibold text-brand-orange border-2 border-dashed border-brand-orange rounded-lg hover:bg-orange-50 transition-colors">
-              <PlusIcon className="h-5 w-5" />
+             <button onClick={handleAddItem} class="mt-4 w-full flex items-center justify-center gap-2 py-3 px-4 font-semibold text-brand-orange border-2 border-dashed border-brand-orange rounded-lg hover:bg-orange-50 transition-colors">
+              <PlusIcon class="h-5 w-5" />
               Add Material to Transaction
             </button>
           </div>
         </div>
 
         {/* Right Panel: Summary */}
-        <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-md">
-            <h2 className="text-xl font-semibold text-gray-700 mb-4">Current Transaction Summary</h2>
-            <div className="bg-gray-50 border border-dashed rounded-lg p-4 min-h-[200px] overflow-y-auto max-h-64">
+        <div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-md">
+            <h2 class="text-xl font-semibold text-gray-700 mb-4">Current Transaction Summary</h2>
+            <div class="bg-gray-50 border border-dashed rounded-lg p-4 min-h-[200px] overflow-y-auto max-h-64">
                 {items.length === 0 ? (
-                    <p className="text-gray-500 text-center py-10">No materials added yet.</p>
+                    <p class="text-gray-500 text-center py-10">No materials added yet.</p>
                 ) : (
-                    <ul className="space-y-3">
+                    <ul class="space-y-3">
                         {items.map((item, index) => (
-                           <li key={index} className="flex justify-between items-center bg-white p-3 rounded-md shadow-sm">
+                           <li key={index} class="flex justify-between items-center bg-white p-3 rounded-md shadow-sm">
                                <div>
-                                   <p className="font-semibold text-gray-800">{item.material}</p>
-                                   <p className="text-sm text-gray-500">{item.weight.toFixed(2)} kg @ R{item.pricePerKg.toFixed(2)}/kg</p>
+                                   <p class="font-semibold text-gray-800">{item.material}</p>
+                                   <p class="text-sm text-gray-500">{item.weight.toFixed(2)} kg @ R{item.pricePerKg.toFixed(2)}/kg</p>
                                </div>
-                               <div className="flex items-center gap-4">
-                                   <p className="font-semibold text-gray-800">R{item.total.toFixed(2)}</p>
-                                   <button onClick={() => handleRemoveItem(index)} className="text-red-500 hover:text-red-700">
-                                       <TrashIcon className="h-5 w-5" />
+                               <div class="flex items-center gap-4">
+                                   <p class="font-semibold text-gray-800">R{item.total.toFixed(2)}</p>
+                                   <button onClick={() => handleRemoveItem(index)} class="text-red-500 hover:text-red-700">
+                                       <TrashIcon class="h-5 w-5" />
                                    </button>
                                </div>
                            </li>
@@ -403,9 +403,9 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
                 )}
             </div>
             
-            <div className="mt-4 bg-orange-50 p-4 rounded-lg text-center">
-                <p className="text-gray-600">Grand Total</p>
-                <p className="text-4xl font-bold text-brand-orange">R {grandTotal.toFixed(2)}</p>
+            <div class="mt-4 bg-orange-50 p-4 rounded-lg text-center">
+                <p class="text-gray-600">Grand Total</p>
+                <p class="text-4xl font-bold text-brand-orange">R {grandTotal.toFixed(2)}</p>
             </div>
             
             {status && (
@@ -414,19 +414,19 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
               </p>
             )}
 
-            <div className="mt-4 space-y-2">
+            <div class="mt-4 space-y-2">
                 <button
                   onClick={handleSaveAll}
                   disabled={isSubmitting || items.length === 0}
-                  className="w-full py-4 text-lg font-semibold text-white bg-slate-600 rounded-lg shadow-md hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  class="w-full py-4 text-lg font-semibold text-white bg-slate-600 rounded-lg shadow-md hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
                   {isSubmitting ? 'Saving...' : `Complete & Save All (${items.length})`}
                 </button>
                 <button
                   onClick={handlePrintReceipt}
-                  className="w-full flex items-center justify-center gap-2 py-3 px-4 font-semibold text-brand-green border-2 border-brand-green rounded-lg hover:bg-green-50 transition-colors disabled:border-gray-300 disabled:text-gray-400 disabled:bg-gray-50"
+                  class="w-full flex items-center justify-center gap-2 py-3 px-4 font-semibold text-brand-green border-2 border-brand-green rounded-lg hover:bg-green-50 transition-colors disabled:border-gray-300 disabled:text-gray-400 disabled:bg-gray-50"
                 >
-                    <PrintIcon className="h-5 w-5" />
+                    <PrintIcon class="h-5 w-5" />
                     Print Receipt
                 </button>
             </div>
@@ -434,18 +434,18 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
       </div>
       
       {isCameraOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-            <div className="bg-white p-4 rounded-lg shadow-xl relative max-w-lg w-full">
-                <h3 className="text-lg font-bold mb-4 text-center">Scan Weight from Scale</h3>
-                <div className="bg-gray-200 rounded-md overflow-hidden">
-                    <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover"></video>
+        <div class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+            <div class="bg-white p-4 rounded-lg shadow-xl relative max-w-lg w-full">
+                <h3 class="text-lg font-bold mb-4 text-center">Scan Weight from Scale</h3>
+                <div class="bg-gray-200 rounded-md overflow-hidden">
+                    <video ref={videoRef} autoPlay playsInline class="w-full h-full object-cover"></video>
                 </div>
-                <canvas ref={canvasRef} className="hidden"></canvas>
-                <div className="mt-4 grid grid-cols-2 gap-3">
-                    <button onClick={closeCamera} className="w-full py-3 px-4 text-lg font-semibold text-gray-700 bg-gray-200 rounded-lg shadow-md hover:bg-gray-300 transition-colors">
+                <canvas ref={canvasRef} class="hidden"></canvas>
+                <div class="mt-4 grid grid-cols-2 gap-3">
+                    <button onClick={closeCamera} class="w-full py-3 px-4 text-lg font-semibold text-gray-700 bg-gray-200 rounded-lg shadow-md hover:bg-gray-300 transition-colors">
                         Cancel
                     </button>
-                    <button onClick={capturePhoto} className="w-full py-3 px-4 text-lg font-semibold text-white bg-brand-orange rounded-lg shadow-md hover:opacity-90 transition-colors">
+                    <button onClick={capturePhoto} class="w-full py-3 px-4 text-lg font-semibold text-white bg-brand-orange rounded-lg shadow-md hover:opacity-90 transition-colors">
                         Capture
                     </button>
                 </div>
