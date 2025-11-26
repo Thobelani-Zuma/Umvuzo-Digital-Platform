@@ -3,7 +3,7 @@ import { RateSheet, Transaction } from './types';
 export const RATE_SHEETS: RateSheet = {
   "Walk-ins": [
     { type: "PET Clear", price: 3.60 },
-    { type: "PET Green", price: 3.00 },
+    { type: "PET Green", price: 2.00 },
     { type: "PET Brown", price: 1.8 },
     { type: "C-oil", price: 1.3 },
     { type: "HDPE", price: 2.00 },
@@ -12,7 +12,7 @@ export const RATE_SHEETS: RateSheet = {
     { type: "C-plastic", price: 2.00 },
     { type: "M-plastic", price: 1.00 },
     { type: "W-paper", price: 1.0 },
-    { type: "K4", price: 0.8 },
+    { type: "K4", price: 0.2 },
     { type: "TetraPak", price: 0.5 },
     { type: "PP", price: 0.2 },
     { type: "Glass bottles", price: 0.2 }
