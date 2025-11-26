@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { GoogleGenAI } from '@google/genai';
 import { Transaction } from '../types';
 import { RATE_SHEETS } from '../constants';
 import { PlusIcon, TrashIcon, PrintIcon, ScaleIcon, CameraIcon } from '../components/icons/Icons';
@@ -179,7 +180,7 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
     try {
         const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-3-pro-preview',
             contents: {
                 parts: [
                     {
@@ -189,7 +190,7 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
                         },
                     },
                     {
-                        text: 'Analyze the image of a digital scale. Extract the numerical weight value. Your response must be only the number. For example, if the scale shows "12.34 kg", respond with "12.34".',
+                        text: 'What is the exact numerical value shown on the digital scale? Respond with only the number.',
                     },
                 ],
             },
