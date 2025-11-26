@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { GoogleGenAI } from '@google/genai';
 import { Transaction } from '../types';
 import { RATE_SHEETS } from '../constants';
 import { PlusIcon, TrashIcon, PrintIcon, ScaleIcon, CameraIcon } from '../components/icons/Icons';
