@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Transaction } from '../types';
 import { RATE_SHEETS } from '../constants';
 import { PlusIcon, TrashIcon, PrintIcon, ScaleIcon, CameraIcon } from '../components/icons/Icons';
+import { GoogleGenAI } from '@google/genai';
 
 interface TransactionsPageProps {
   repName: string;
@@ -312,37 +313,26 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
 
   return (
     <div>
-      {/* FIX: Replaced class with className for JSX compatibility */}
       <h1 className="text-3xl font-bold text-gray-800 mb-6">Log Transaction</h1>
 
-      {/* FIX: Replaced class with className for JSX compatibility */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
         {/* Left Panel: Form */}
-        {/* FIX: Replaced class with className for JSX compatibility */}
         <div className="lg:col-span-3 bg-white p-6 rounded-xl shadow-md space-y-6">
-          {/* FIX: Replaced class with className for JSX compatibility */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              {/* FIX: Replaced class with className for JSX compatibility */}
               <label htmlFor="repName" className="block text-sm font-medium text-gray-700">Rep Name</label>
-              {/* FIX: Replaced class with className for JSX compatibility */}
               <input id="repName" type="text" value={repName} disabled className="mt-1 block w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md" />
             </div>
             <div>
-              {/* FIX: Replaced class with className for JSX compatibility */}
               <label htmlFor="clientName" className="block text-sm font-medium text-gray-700">Client Name</label>
-              {/* FIX: Replaced class with className for JSX compatibility */}
               <input id="clientName" type="text" placeholder="Enter client name" value={clientName} onChange={e => setClientName(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-brand-orange focus:border-brand-orange" />
             </div>
-            {/* FIX: Replaced class with className for JSX compatibility */}
             <div className="md:col-span-2">
-                {/* FIX: Replaced class with className for JSX compatibility */}
                 <label htmlFor="timeOfDay" className="block text-sm font-medium text-gray-700">Time of Day</label>
                 <select 
                     id="timeOfDay" 
                     value={timeOfDay} 
                     onChange={e => setTimeOfDay(e.target.value as 'AM' | 'PM')}
-                    // FIX: Replaced class with className for JSX compatibility
                     className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-brand-orange focus:border-brand-orange"
                 >
                     <option value="AM">AM</option>
@@ -351,67 +341,43 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
             </div>
           </div>
           
-          {/* FIX: Replaced class with className for JSX compatibility */}
           <div className="pt-6 border-t">
-            {/* FIX: Replaced class with className for JSX compatibility */}
             <h2 className="text-xl font-semibold text-gray-700">Add Material</h2>
-            {/* FIX: Replaced class with className for JSX compatibility */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
               <div>
-                {/* FIX: Replaced class with className for JSX compatibility */}
                 <label htmlFor="rateSheet" className="block text-sm font-medium text-gray-700">Rate Sheet</label>
-                {/* FIX: Replaced class with className for JSX compatibility */}
                 <select id="rateSheet" value={rateSheetKey} onChange={e => setRateSheetKey(e.target.value)} className="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-brand-orange focus:border-brand-orange">
                     {Object.keys(RATE_SHEETS).map(sheet => <option key={sheet} value={sheet}>{sheet}</option>)}
                 </select>
               </div>
               <div>
-                {/* FIX: Replaced class with className for JSX compatibility */}
                 <label htmlFor="material" className="block text-sm font-medium text-gray-700">Material</label>
-                {/* FIX: Replaced class with className for JSX compatibility */}
                 <select id="material" value={material} onChange={e => setMaterial(e.target.value)} className="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-brand-orange focus:border-brand-orange">
                     {rateSheet.map(m => <option key={m.type} value={m.type}>{`${m.type} (R${m.price.toFixed(1)}/kg)`}</option>)}
                 </select>
               </div>
-              {/* FIX: Replaced class with className for JSX compatibility */}
               <div className="md:col-span-2">
-                {/* FIX: Replaced class with className for JSX compatibility */}
                 <label htmlFor="weight" className="block text-sm font-medium text-gray-700">Weight (kg)</label>
-                {/* FIX: Replaced class with className for JSX compatibility */}
                 <div className="mt-1 flex gap-2">
-                    {/* FIX: Replaced class with className for JSX compatibility */}
                     <input type="number" step="0.01" id="weight" value={weight} onChange={e => setWeight(e.target.value)} placeholder="0.00" className="flex-grow p-2 border border-gray-300 rounded-md focus:ring-brand-orange focus:border-brand-orange" />
-                    {/* FIX: Replaced class with className for JSX compatibility */}
                     <button onClick={handleGetWeight} disabled={scaleStatus === 'fetching'} title="Get Weight from Scale" className="flex-shrink-0 flex items-center justify-center p-3 font-semibold text-gray-700 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-wait">
-                        {/* FIX: Replaced class with className for JSX compatibility */}
                         <ScaleIcon className="h-5 w-5" />
                     </button>
-                    {/* FIX: Replaced class with className for JSX compatibility */}
                     <button onClick={openCamera} disabled={scanStatus === 'scanning'} title="Scan Weight from Image" className="flex-shrink-0 flex items-center justify-center p-3 font-semibold text-gray-700 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-wait">
-                        {/* FIX: Replaced class with className for JSX compatibility */}
                         <CameraIcon className="h-5 w-5" />
                     </button>
                 </div>
-                {/* FIX: Replaced class with className for JSX compatibility */}
                 <div className="h-4 mt-1 text-xs">
-                    {/* FIX: Replaced class with className for JSX compatibility */}
                     {scaleStatus === 'fetching' && <p className="text-blue-600">Fetching weight...</p>}
-                    {/* FIX: Replaced class with className for JSX compatibility */}
                     {scaleStatus === 'success' && <p className="text-green-600">Weight captured successfully.</p>}
-                    {/* FIX: Replaced class with className for JSX compatibility */}
                     {scaleStatus === 'error' && <p className="text-red-600">{scaleError}</p>}
-                    {/* FIX: Replaced class with className for JSX compatibility */}
                     {scanStatus === 'scanning' && <p className="text-blue-600">Scanning image for weight...</p>}
-                    {/* FIX: Replaced class with className for JSX compatibility */}
                     {scanStatus === 'success' && <p className="text-green-600">Weight scanned successfully.</p>}
-                    {/* FIX: Replaced class with className for JSX compatibility */}
                     {scanStatus === 'error' && <p className="text-red-600">{scanError}</p>}
                 </div>
               </div>
             </div>
-             {/* FIX: Replaced class with className for JSX compatibility */}
              <button onClick={handleAddItem} className="mt-4 w-full flex items-center justify-center gap-2 py-3 px-4 font-semibold text-brand-orange border-2 border-dashed border-brand-orange rounded-lg hover:bg-orange-50 transition-colors">
-              {/* FIX: Replaced class with className for JSX compatibility */}
               <PlusIcon className="h-5 w-5" />
               Add Material to Transaction
             </button>
@@ -419,34 +385,22 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
         </div>
 
         {/* Right Panel: Summary */}
-        {/* FIX: Replaced class with className for JSX compatibility */}
         <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-md">
-            {/* FIX: Replaced class with className for JSX compatibility */}
             <h2 className="text-xl font-semibold text-gray-700 mb-4">Current Transaction Summary</h2>
-            {/* FIX: Replaced class with className for JSX compatibility */}
             <div className="bg-gray-50 border border-dashed rounded-lg p-4 min-h-[200px] overflow-y-auto max-h-64">
                 {items.length === 0 ? (
-                    // FIX: Replaced class with className for JSX compatibility
                     <p className="text-gray-500 text-center py-10">No materials added yet.</p>
                 ) : (
-                    // FIX: Replaced class with className for JSX compatibility
                     <ul className="space-y-3">
                         {items.map((item, index) => (
-                           // FIX: Replaced class with className for JSX compatibility
                            <li key={index} className="flex justify-between items-center bg-white p-3 rounded-md shadow-sm">
                                <div>
-                                   {/* FIX: Replaced class with className for JSX compatibility */}
                                    <p className="font-semibold text-gray-800">{item.material}</p>
-                                   {/* FIX: Replaced class with className for JSX compatibility */}
                                    <p className="text-sm text-gray-500">{item.weight.toFixed(2)} kg @ R{item.pricePerKg.toFixed(2)}/kg</p>
                                </div>
-                               {/* FIX: Replaced class with className for JSX compatibility */}
                                <div className="flex items-center gap-4">
-                                   {/* FIX: Replaced class with className for JSX compatibility */}
                                    <p className="font-semibold text-gray-800">R{item.total.toFixed(2)}</p>
-                                   {/* FIX: Replaced class with className for JSX compatibility */}
                                    <button onClick={() => handleRemoveItem(index)} className="text-red-500 hover:text-red-700">
-                                       {/* FIX: Replaced class with className for JSX compatibility */}
                                        <TrashIcon className="h-5 w-5" />
                                    </button>
                                </div>
@@ -456,11 +410,8 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
                 )}
             </div>
             
-            {/* FIX: Replaced class with className for JSX compatibility */}
             <div className="mt-4 bg-orange-50 p-4 rounded-lg text-center">
-                {/* FIX: Replaced class with className for JSX compatibility */}
                 <p className="text-gray-600">Grand Total</p>
-                {/* FIX: Replaced class with className for JSX compatibility */}
                 <p className="text-4xl font-bold text-brand-orange">R {grandTotal.toFixed(2)}</p>
             </div>
             
@@ -470,22 +421,18 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
               </p>
             )}
 
-            {/* FIX: Replaced class with className for JSX compatibility */}
             <div className="mt-4 space-y-2">
                 <button
                   onClick={handleSaveAll}
                   disabled={isSubmitting || items.length === 0}
-                  // FIX: Replaced class with className for JSX compatibility
                   className="w-full py-4 text-lg font-semibold text-white bg-slate-600 rounded-lg shadow-md hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
                   {isSubmitting ? 'Saving...' : `Complete & Save All (${items.length})`}
                 </button>
                 <button
                   onClick={handlePrintReceipt}
-                  // FIX: Replaced class with className for JSX compatibility
                   className="w-full flex items-center justify-center gap-2 py-3 px-4 font-semibold text-brand-green border-2 border-brand-green rounded-lg hover:bg-green-50 transition-colors disabled:border-gray-300 disabled:text-gray-400 disabled:bg-gray-50"
                 >
-                    {/* FIX: Replaced class with className for JSX compatibility */}
                     <PrintIcon className="h-5 w-5" />
                     Print Receipt
                 </button>
@@ -494,26 +441,17 @@ export function TransactionsPage({ repName, addMultipleTransactions }: Transacti
       </div>
       
       {isCameraOpen && (
-        // FIX: Replaced class with className for JSX compatibility
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-            {/* FIX: Replaced class with className for JSX compatibility */}
             <div className="bg-white p-4 rounded-lg shadow-xl relative max-w-lg w-full">
-                {/* FIX: Replaced class with className for JSX compatibility */}
                 <h3 className="text-lg font-bold mb-4 text-center">Scan Weight from Scale</h3>
-                {/* FIX: Replaced class with className for JSX compatibility */}
                 <div className="bg-gray-200 rounded-md overflow-hidden">
-                    {/* FIX: Replaced class with className for JSX compatibility */}
                     <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover"></video>
                 </div>
-                {/* FIX: Replaced class with className for JSX compatibility */}
                 <canvas ref={canvasRef} className="hidden"></canvas>
-                {/* FIX: Replaced class with className for JSX compatibility */}
                 <div className="mt-4 grid grid-cols-2 gap-3">
-                    {/* FIX: Replaced class with className for JSX compatibility */}
                     <button onClick={closeCamera} className="w-full py-3 px-4 text-lg font-semibold text-gray-700 bg-gray-200 rounded-lg shadow-md hover:bg-gray-300 transition-colors">
                         Cancel
                     </button>
-                    {/* FIX: Replaced class with className for JSX compatibility */}
                     <button onClick={capturePhoto} className="w-full py-3 px-4 text-lg font-semibold text-white bg-brand-orange rounded-lg shadow-md hover:opacity-90 transition-colors">
                         Capture
                     </button>
