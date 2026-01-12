@@ -36,7 +36,7 @@ export const RATE_SHEETS: RateSheet = {
     { type: "Cans", price: 15.50 },
     { type: "C-Plastic", price: 1.50 },
     { type: "M-Plastic", price: 1.30 },
-    { type: "K4", price: 0.80 }
+    { type: "K4", price: 0.20 }
   ]
 };
 
