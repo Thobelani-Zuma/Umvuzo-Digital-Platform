@@ -5,6 +5,7 @@ import { PayoutIcon, WeightIcon, UsersIcon, SearchIcon, ReportIcon, CashIcon, Sh
 import { generateReportPDF } from '../services/reportService';
 import { db } from '../services/firebase';
 import { RATE_SHEETS } from '../constants';
+import { doc, getDoc, collection, query, orderBy, limit, getDocs, setDoc } from 'firebase/firestore';
 
 
 const StatCard = ({ icon, title, value, color }: { icon: React.ReactNode, title: string, value: string, color: string }) => (
@@ -29,21 +30,20 @@ export function AdminDashboardPage({ allTransactions }: { allTransactions: Trans
   useEffect(() => {
     const setupBalances = async () => {
       const todayStr = new Date().toISOString().split('T')[0];
-      const balanceDocRef = db.collection('dailyBalances').doc(todayStr);
+      const balanceDocRef = doc(db, 'dailyBalances', todayStr);
 
       try {
-        const docSnap = await balanceDocRef.get();
-        if (docSnap.exists) {
+        const docSnap = await getDoc(balanceDocRef);
+        if (docSnap.exists()) {
           // Balance for today already exists, just load it.
           const data = docSnap.data()!;
           setOpeningBalance(data.openingBalance?.toString() || '0');
         } else {
           // No balance for today, find the most recent closing balance.
-          const balancesQuery = db.collection('dailyBalances')
-            .orderBy('date', 'desc')
-            .limit(1);
+          const balancesCol = collection(db, 'dailyBalances');
+          const balancesQuery = query(balancesCol, orderBy('date', 'desc'), limit(1));
           
-          const querySnapshot = await balancesQuery.get();
+          const querySnapshot = await getDocs(balancesQuery);
           
           let newOpeningBalance = 0;
           if (!querySnapshot.empty) {
@@ -54,7 +54,7 @@ export function AdminDashboardPage({ allTransactions }: { allTransactions: Trans
           
           // Set the opening balance in state and save it for today to create the document
           setOpeningBalance(newOpeningBalance.toString());
-          await balanceDocRef.set({
+          await setDoc(balanceDocRef, {
             openingBalance: newOpeningBalance,
             date: todayStr,
           }, { merge: true });
@@ -157,9 +157,9 @@ export function AdminDashboardPage({ allTransactions }: { allTransactions: Trans
 
     const finalClosingBalance = ob - todaysWalkinPayout;
 
-    const balanceDocRef = db.collection('dailyBalances').doc(todayStr);
+    const balanceDocRef = doc(db, 'dailyBalances', todayStr);
     try {
-      await balanceDocRef.set({ 
+      await setDoc(balanceDocRef, { 
         openingBalance: ob, 
         closingBalance: finalClosingBalance,
         date: todayStr 
