@@ -1,7 +1,8 @@
 {
-  "name": "Copy of Umvuzo Digital Platform-real",
+  "name": "Umvuzo Digital Platform",
   "description": "A modern, beautiful web application for managing material transactions, viewing dashboards with charts, and generating reports. Rebuilt with React and Tailwind CSS.",
   "requestFramePermissions": [
     "camera"
-  ]
+  ],
+  "majorCapabilities": []
 }

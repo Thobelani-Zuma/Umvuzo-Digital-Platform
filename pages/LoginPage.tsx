@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 
 interface LoginPageProps {
-  onLogin: (email: string, password: string) => Promise<void>;
-  onRegister: (name: string, email: string, password: string) => Promise<void>;
+  onLogin: (email: string) => void;
+  onRegister: (name: string, email: string) => boolean;
 }
 
 export function LoginPage({ onLogin, onRegister }: LoginPageProps) {
@@ -11,37 +11,22 @@ export function LoginPage({ onLogin, onRegister }: LoginPageProps) {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    if (isRegistering && !name) {
-      setError('Please enter your full name.');
-      return;
-    }
-    
-    if (!email || !password) {
-        setError('Email and password are required.');
+    if (isRegistering) {
+      if (!name) {
+        setError('Please enter your full name.');
         return;
-    }
-
-    setIsLoading(true);
-    try {
-      if (isRegistering) {
-        await onRegister(name, email, password);
-      } else {
-        await onLogin(email, password);
       }
-    } catch (err: any) {
-      if (err.code) {
-        setError(err.code.replace('auth/', '').replace(/-/g, ' '));
-      } else {
-        setError('An unexpected error occurred.');
+      const success = onRegister(name, email);
+      if (!success) {
+        setError('An account with this email already exists.');
       }
-    } finally {
-      setIsLoading(false);
+    } else {
+      onLogin(email);
     }
   };
 
@@ -75,7 +60,6 @@ export function LoginPage({ onLogin, onRegister }: LoginPageProps) {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. Jane Doe"
-                required
                 className="mt-1 block w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-brand-orange focus:border-brand-orange text-gray-900"
               />
             </div>
@@ -90,7 +74,6 @@ export function LoginPage({ onLogin, onRegister }: LoginPageProps) {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
-              required
               className="mt-1 block w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-brand-orange focus:border-brand-orange text-gray-900"
             />
           </div>
@@ -104,19 +87,17 @@ export function LoginPage({ onLogin, onRegister }: LoginPageProps) {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              required
               className="mt-1 block w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-brand-orange focus:border-brand-orange text-gray-900"
             />
           </div>
           
-          {error && <p className="text-red-500 text-sm capitalize text-center">{error}</p>}
+          {error && <p className="text-red-500 text-sm">{error}</p>}
 
           <button
             type="submit"
-            disabled={isLoading}
-            className="w-full py-3 px-4 text-lg font-semibold text-white bg-brand-orange rounded-lg shadow-md hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-orange transition-transform transform hover:scale-105 disabled:bg-gray-400 disabled:scale-100 disabled:cursor-not-allowed"
+            className="w-full py-3 px-4 text-lg font-semibold text-white bg-brand-orange rounded-lg shadow-md hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-orange transition-transform transform hover:scale-105"
           >
-            {isLoading ? 'Processing...' : (isRegistering ? 'Register' : 'Login')}
+            {isRegistering ? 'Register' : 'Login'}
           </button>
         </form>
 
@@ -128,8 +109,6 @@ export function LoginPage({ onLogin, onRegister }: LoginPageProps) {
             </button>
           </p>
         </div>
-        <p className="mt-4 text-xs text-center text-gray-400">
-        </p>
       </div>
     </div>
   );
