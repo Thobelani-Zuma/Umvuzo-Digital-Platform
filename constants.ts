@@ -18,7 +18,7 @@ export const RATE_SHEETS: RateSheet = {
     { type: "Glass bottles", price: 0.2 }
   ],
   "CCT": [
-    { type: "PET Clear", price: 2.6 },
+    { type: "PET Clear", price: 2.0 },
     { type: "PET Green", price: 1.5 },
     { type: "PET Brown", price: 1.3 },
     { type: "K4", price: 0.5 },
