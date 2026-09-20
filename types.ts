@@ -1,3 +1,4 @@
+// FIX: Removed incorrect import for Page, as it's defined in this file.
 export enum Page {
   Dashboard = 'dashboard',
   Transactions = 'transactions',
@@ -29,6 +30,8 @@ export interface Transaction {
   pricePerKg: number;
   total: number;
   date: string;
+  userEmail: string;
+  rateSheet: string;
 }
 
 export type TransactionData = {

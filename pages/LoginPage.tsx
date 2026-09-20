@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 
 interface LoginPageProps {
-  onLogin: (email: string) => void;
-  onRegister: (name: string, email: string) => boolean;
+  onLogin: (email: string, password: string) => Promise<void>;
+  onRegister: (name: string, email: string, password: string) => Promise<void>;
 }
 
 export function LoginPage({ onLogin, onRegister }: LoginPageProps) {
@@ -11,22 +11,45 @@ export function LoginPage({ onLogin, onRegister }: LoginPageProps) {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    if (isRegistering) {
-      if (!name) {
-        setError('Please enter your full name.');
+    if (isRegistering && !name) {
+      setError('Please enter your full name.');
+      return;
+    }
+    
+    if (!email || !password) {
+        setError('Email and password are required.');
         return;
+    }
+
+    setIsLoading(true);
+    try {
+      if (isRegistering) {
+        await onRegister(name, email, password);
+      } else {
+        await onLogin(email, password);
       }
-      const success = onRegister(name, email);
-      if (!success) {
-        setError('An account with this email already exists.');
+    } catch (err: any) {
+      if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found') {
+        setError('Invalid email or password. Please check your details and try again.');
+      } else if (err.code === 'auth/email-already-in-use') {
+        setError('This email is already registered. Please login instead.');
+      } else if (err.code === 'auth/weak-password') {
+        setError('Password should be at least 6 characters long.');
+      } else if (err.code === 'auth/network-request-failed') {
+        setError('Network connection error. Please check your connection and try again.');
+      } else if (err.message) {
+        setError(err.message.replace(/^Firebase:\s*/i, ''));
+      } else {
+        setError('An unexpected error occurred. Please try again.');
       }
-    } else {
-      onLogin(email);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -60,6 +83,7 @@ export function LoginPage({ onLogin, onRegister }: LoginPageProps) {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. Jane Doe"
+                required
                 className="mt-1 block w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-brand-orange focus:border-brand-orange text-gray-900"
               />
             </div>
@@ -74,6 +98,7 @@ export function LoginPage({ onLogin, onRegister }: LoginPageProps) {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
+              required
               className="mt-1 block w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-brand-orange focus:border-brand-orange text-gray-900"
             />
           </div>
@@ -87,17 +112,19 @@ export function LoginPage({ onLogin, onRegister }: LoginPageProps) {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
+              required
               className="mt-1 block w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-brand-orange focus:border-brand-orange text-gray-900"
             />
           </div>
           
-          {error && <p className="text-red-500 text-sm">{error}</p>}
+          {error && <p className="text-red-500 text-sm capitalize text-center">{error}</p>}
 
           <button
             type="submit"
-            className="w-full py-3 px-4 text-lg font-semibold text-white bg-brand-orange rounded-lg shadow-md hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-orange transition-transform transform hover:scale-105"
+            disabled={isLoading}
+            className="w-full py-3 px-4 text-lg font-semibold text-white bg-brand-orange rounded-lg shadow-md hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-orange transition-transform transform hover:scale-105 disabled:bg-gray-400 disabled:scale-100 disabled:cursor-not-allowed"
           >
-            {isRegistering ? 'Register' : 'Login'}
+            {isLoading ? 'Processing...' : (isRegistering ? 'Register' : 'Login')}
           </button>
         </form>
 
